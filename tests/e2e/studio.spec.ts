@@ -912,6 +912,9 @@ test("direct text editing commits once and rebases safely with MCP", async ({
   await expect(page.getByRole("textbox", { name: "Name" })).toHaveValue(
     "Auto width label",
   );
+  await expect
+    .poll(async () => (await page.locator(".selection-box").boundingBox())?.y)
+    .toBeGreaterThan(fixedBounds!.y + 20);
   const autoBounds = await page.locator(".selection-box").boundingBox();
   expect(autoBounds).not.toBeNull();
   await page.mouse.dblclick(
@@ -919,6 +922,7 @@ test("direct text editing commits once and rebases safely with MCP", async ({
     autoBounds!.y + autoBounds!.height / 2,
   );
   await expect(editor).toBeFocused();
+  await expect(editor).toHaveValue("Auto label");
   await editor.fill("Auto width campaign label expanded");
   await expect(page.getByText(/Auto size will resolve(?: to)?/)).toBeVisible();
   await page.keyboard.press(
