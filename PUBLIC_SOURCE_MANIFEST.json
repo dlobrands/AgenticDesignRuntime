@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "735eb530c2ff31b55477c86aed739ef2c6729343",
-  "sourceCommittedAt": "2026-08-11T22:51:37-04:00",
+  "sourceCommit": "debbe319ae29eacdac44255fcb4bcfe54f7d2c19",
+  "sourceCommittedAt": "2026-08-11T23:10:21-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "sizeBytes": 1534,
-      "sha256": "86c72f93458c1d87b8ad713571fa08a303475bbd5143ddc004cb42a533f356da"
+      "sha256": "0e0e8c9b7acfb3a96dd336c06491c6f4c55e97d5f5c9c11543e7a56e83821264"
     },
     {
       "path": ".gitignore",
