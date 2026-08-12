@@ -17,10 +17,16 @@ copied.
 
 ## Release gate
 
-An approved `vX.Y.Z` tag must match `product-metadata.json`. Private quality,
-browser, packed-install, checksum, SBOM, provenance, and representative-design
-gates run first. The sanitized snapshot then repeats its source gates before
-GitHub or npm publication. Publication uses a protected GitHub Environment.
+Publication is a manual private-default-branch action, not a tag-push side
+effect. The dispatch is accepted only from the repository-owner identity and
+must provide the exact current private `main` commit, the exact version in
+`product-metadata.json`, and the confirmation `PUBLISH ADR vX.Y.Z`. The target
+public tag must not already exist. Private quality, browser, packed-install,
+checksum, SBOM, provenance, and representative-design gates run first. The
+sanitized snapshot then repeats its source gates before GitHub or npm
+publication. The GitHub Environment records the deployment; the explicit
+owner dispatch is the authorization boundary when paid private-environment
+review protection is unavailable.
 
 GitHub Releases contain the macOS arm64 bundle, component tarballs, plugin,
 installer, checksums, release manifest, SBOM, and provenance. npm publishes the

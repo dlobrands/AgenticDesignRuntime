@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "1a5a7faded0e1270c4495aa71eb49df9c6e1c0b7",
-  "sourceCommittedAt": "2026-08-11T23:48:23-04:00",
+  "sourceCommit": "86d0e07002d62ece958389920e9d5a8c0a0410d6",
+  "sourceCommittedAt": "2026-08-12T00:16:57-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -12,8 +12,8 @@
     },
     {
       "path": ".github/workflows/ci.yml",
-      "sizeBytes": 1534,
-      "sha256": "0e0e8c9b7acfb3a96dd336c06491c6f4c55e97d5f5c9c11543e7a56e83821264"
+      "sizeBytes": 1592,
+      "sha256": "2111f0d89bad1dc687d6ce1a37360a26c6fc08ad7a7115174b264d4c24d7738c"
     },
     {
       "path": ".gitignore",
@@ -667,8 +667,8 @@
     },
     {
       "path": "docs/PUBLIC_RELEASES.md",
-      "sizeBytes": 1594,
-      "sha256": "4c44ef2cbee38f0fd956b8d2f007e33a517258cfcd97aa2d8435dbd99109c73d"
+      "sizeBytes": 1994,
+      "sha256": "9fe21c2b7e2cb1420c4c6666e40c6131242c4b890328f2f320b5e97eb9c95cf1"
     },
     {
       "path": "docs/PUBLIC_SCHEMA_STUDIO_PARITY.md",
@@ -1324,6 +1324,11 @@
       "path": "scripts/validate-plugin.mjs",
       "sizeBytes": 3021,
       "sha256": "d3a74792f35595f6aa416a50df8f660192a18730517a8120c952d62d0c5354de"
+    },
+    {
+      "path": "scripts/validate-promotion-workflow.mjs",
+      "sizeBytes": 1781,
+      "sha256": "09fae1c64eaabd4598156412adfd7afbb777b0e5499bdc2786cc5cda81e9e697"
     },
     {
       "path": "scripts/verify-packed-release.mjs",

@@ -26,6 +26,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm plugin:validate
+      - run: node scripts/validate-promotion-workflow.mjs
       - run: pnpm test
       - run: pnpm test:visual
       - run: pnpm test:performance
