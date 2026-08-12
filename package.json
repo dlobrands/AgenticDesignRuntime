@@ -26,6 +26,7 @@
     "plugin:install:personal": "node scripts/install-personal-plugin.mjs",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm plugin:validate && pnpm test && pnpm test:visual && pnpm test:performance && pnpm build:check",
     "pack:release": "pnpm build && node scripts/package-release.mjs",
+    "pack:release:published": "pnpm build && node scripts/package-release.mjs --packages-from-registry",
     "release:evidence": "node scripts/generate-release-evidence.mjs",
     "verify:packed": "node scripts/verify-packed-release.mjs",
     "public:snapshot": "node scripts/create-public-snapshot.mjs",

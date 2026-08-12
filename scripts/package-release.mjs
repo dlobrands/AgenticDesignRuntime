@@ -52,6 +52,7 @@ const pluginManifest = JSON.parse(
   ),
 );
 const pluginVersion = pluginManifest.version;
+const packagesFromRegistry = process.argv.includes("--packages-from-registry");
 await rm(release, { recursive: true, force: true });
 await mkdir(release, { recursive: true });
 
@@ -67,14 +68,27 @@ for (const packageName of [
   "@tva-agentic-design/runtime",
   "@tva-agentic-design/mcp",
 ]) {
-  execFileSync(
-    "pnpm",
-    ["--filter", packageName, "pack", "--pack-destination", release],
-    {
-      cwd: root,
-      stdio: "inherit",
-    },
-  );
+  if (packagesFromRegistry)
+    execFileSync(
+      "npm",
+      [
+        "pack",
+        `${packageName}@${version}`,
+        "--pack-destination",
+        release,
+        "--silent",
+      ],
+      { cwd: root, stdio: "inherit" },
+    );
+  else
+    execFileSync(
+      "pnpm",
+      ["--filter", packageName, "pack", "--pack-destination", release],
+      {
+        cwd: root,
+        stdio: "inherit",
+      },
+    );
 }
 
 const runtimeArchiveName = `tva-agentic-design-runtime-${version}.tgz`;

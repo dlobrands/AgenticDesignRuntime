@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "587de1c87747f32e408f943a86f1323bbda3ba36",
-  "sourceCommittedAt": "2026-08-12T06:49:15-04:00",
+  "sourceCommit": "f96c90903c0d647c21f14db7362801818989e589",
+  "sourceCommittedAt": "2026-08-12T07:10:52-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -797,8 +797,8 @@
     },
     {
       "path": "package.json",
-      "sizeBytes": 2147,
-      "sha256": "c230ff6ffa40dc8e43d3219a0afa45df9dc8465dc823fa14a3b5d0e499d1b562"
+      "sizeBytes": 2252,
+      "sha256": "efbcd63187107e0c80e6cac814874919cb9f04f960ac0e5742f37d843d2e3808"
     },
     {
       "path": "packages/client/LICENSE",
@@ -1312,8 +1312,8 @@
     },
     {
       "path": "scripts/package-release.mjs",
-      "sizeBytes": 8719,
-      "sha256": "d0068cc6e150abbb0f8e05fabc5c4a76827515d641623b64a46ce45db1987d8e"
+      "sizeBytes": 9064,
+      "sha256": "6c314c540573cc326e16162f4f2bb00f91e22e8cb57a33e661311edc3f810828"
     },
     {
       "path": "scripts/publish-or-verify-npm.mjs",
