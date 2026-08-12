@@ -62,9 +62,4 @@ jobs:
       - run: shasum -a 256 -c SHA256SUMS
         working-directory: release
       - name: Publish exact public packages through npm OIDC
-        run: |
-          npm publish ./release/tva-agentic-design-core-${{ inputs.release_version }}.tgz --access public
-          npm publish ./release/tva-agentic-design-client-${{ inputs.release_version }}.tgz --access public
-          npm publish ./release/tva-agentic-design-renderer-pixi-${{ inputs.release_version }}.tgz --access public
-          npm publish ./release/tva-agentic-design-runtime-${{ inputs.release_version }}.tgz --access public
-          npm publish ./release/tva-agentic-design-mcp-${{ inputs.release_version }}.tgz --access public
+        run: node scripts/publish-or-verify-npm.mjs "${{ inputs.release_version }}"

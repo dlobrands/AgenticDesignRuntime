@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "9a1b21f3c821567523660e3f6951e31e85f8fac9",
-  "sourceCommittedAt": "2026-08-12T06:20:06-04:00",
+  "sourceCommit": "587de1c87747f32e408f943a86f1323bbda3ba36",
+  "sourceCommittedAt": "2026-08-12T06:49:15-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -12,8 +12,8 @@
     },
     {
       "path": ".github/workflows/publish-npm.yml",
-      "sizeBytes": 2820,
-      "sha256": "ee0d9248f1d2270494f60f84c91beac34818e2c7174ad55751ab7a876706b01a"
+      "sizeBytes": 2346,
+      "sha256": "a5772c8f70110b822608d1d279cf0c2989613185a9ed29f7a9585cabd0b8bc25"
     },
     {
       "path": ".gitignore",
@@ -667,8 +667,8 @@
     },
     {
       "path": "docs/PUBLIC_RELEASES.md",
-      "sizeBytes": 3476,
-      "sha256": "8a2952eea2d9d233113b4c0f965bae223179d21a89006dedfdb6bf716d4c4b96"
+      "sizeBytes": 3785,
+      "sha256": "7182a72ce742e66af3db70d8315b306f5d8a5d5be74ddfc2dc946509db90ddee"
     },
     {
       "path": "docs/PUBLIC_SCHEMA_STUDIO_PARITY.md",
@@ -1316,6 +1316,11 @@
       "sha256": "d0068cc6e150abbb0f8e05fabc5c4a76827515d641623b64a46ce45db1987d8e"
     },
     {
+      "path": "scripts/publish-or-verify-npm.mjs",
+      "sizeBytes": 2103,
+      "sha256": "b33c8eecbac9f24466311c3ebb72604c61dfa8c79142c7f5ad21ed3efe58ac5b"
+    },
+    {
       "path": "scripts/uninstall-macos-release.mjs",
       "sizeBytes": 1126,
       "sha256": "9f3ea36f726753a320cf3d1d84f64a377fb38c64b8818a66a182e3baa025f357"
@@ -1327,8 +1332,8 @@
     },
     {
       "path": "scripts/validate-promotion-workflow.mjs",
-      "sizeBytes": 3062,
-      "sha256": "57da4cebcdf17bf253820f9dff6dd8dbfcbce72c9515ca0500d965c2e66fdf48"
+      "sizeBytes": 2917,
+      "sha256": "84195e975ad68ae9172aa4305fd1996d8b60af32d466fb7a14b5af2315965f5b"
     },
     {
       "path": "scripts/verify-packed-release.mjs",

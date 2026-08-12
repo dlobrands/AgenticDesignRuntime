@@ -60,6 +60,11 @@ future `npm publish` actions. The `public-production` environment accepts only
 stable tag refs matching `v*.*.*`; ordinary branches cannot acquire its OIDC
 publishing identity.
 
+Promotion is safely repeatable after a partial npm failure. For each exact
+version, the workflow publishes only an absent package. If a version already
+exists, its registry SHA-512 integrity must match the locally packed archive
+exactly; a mismatch or any lookup failure other than `E404` stops publication.
+
 The public workflow identity must match each package's public
 `repository.url`. Binding npm to the private development repository would make
 that identity inconsistent and would prevent public-repository provenance.

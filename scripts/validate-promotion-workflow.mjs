@@ -36,6 +36,7 @@ const privateContracts = [
   "needs: [authorize, quality, macos-release]",
   "environment: public-production",
   "secrets.ADR_PUBLIC_REPO_TOKEN",
+  "git -C public-repository diff --cached --quiet",
   "gh workflow run publish-npm.yml",
   '--ref "v${{ needs.authorize.outputs.version }}"',
   "--verify-tag",
@@ -72,11 +73,7 @@ const publicContracts = [
   "git+https://github.com/dlobrands/AgenticDesignRuntime.git",
   "pnpm install --frozen-lockfile",
   "pnpm pack:release",
-  "npm publish ./release/tva-agentic-design-core-",
-  "npm publish ./release/tva-agentic-design-client-",
-  "npm publish ./release/tva-agentic-design-renderer-pixi-",
-  "npm publish ./release/tva-agentic-design-runtime-",
-  "npm publish ./release/tva-agentic-design-mcp-",
+  'node scripts/publish-or-verify-npm.mjs "${{ inputs.release_version }}"',
 ];
 for (const contract of publicContracts)
   if (!publicWorkflow.includes(contract))
