@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "cf8a75575c3c1091bba4a3e6ae617cf7c95f34bd",
-  "sourceCommittedAt": "2026-08-12T00:50:48-04:00",
+  "sourceCommit": "b6766380e3fbf96e477d87b18483c3ddd51d7d2a",
+  "sourceCommittedAt": "2026-08-12T01:56:35-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -427,8 +427,8 @@
     },
     {
       "path": "apps/studio/src/render-worker.ts",
-      "sizeBytes": 4632,
-      "sha256": "6ac8bb1a0fa1d2d4955fa95549a9a1c307fa2ae136d27437b431cb494f80a6cc"
+      "sizeBytes": 5561,
+      "sha256": "aad74015f14c02ecd2a9ede7fa24cd8f3be363dc523ec1e115f1b208232c2a6c"
     },
     {
       "path": "apps/studio/src/runtime-sync.ts",

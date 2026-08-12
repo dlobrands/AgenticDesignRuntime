@@ -33,6 +33,36 @@ const canvas = document.getElementById("render-target") as HTMLCanvasElement;
 const capabilityRenderer = new DesignRenderer();
 await capabilityRenderer.initialize(canvas);
 const agenticCapabilities = () => rendererCapabilities(capabilityRenderer);
+const createFrameRenderer = async (scale: number): Promise<DesignRenderer> => {
+  const renderer = new DesignRenderer();
+  await renderer.initialize(document.createElement("canvas"), 1, 1, scale);
+  return renderer;
+};
+const scaleOneRenderers = await Promise.all([
+  createFrameRenderer(1),
+  createFrameRenderer(1),
+]);
+let scaleOneRenderersPending = 0;
+
+const replenishScaleOneRenderers = (): void => {
+  while (scaleOneRenderers.length + scaleOneRenderersPending < 2) {
+    scaleOneRenderersPending += 1;
+    void createFrameRenderer(1)
+      .then((renderer) => {
+        if (scaleOneRenderers.length < 2) scaleOneRenderers.push(renderer);
+        else renderer.destroy();
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        scaleOneRenderersPending -= 1;
+      });
+  }
+};
+
+const takeFrameRenderer = async (scale: number): Promise<DesignRenderer> =>
+  scale === 1
+    ? (scaleOneRenderers.pop() ?? createFrameRenderer(scale))
+    : createFrameRenderer(scale);
 
 const json = async <T>(url: string): Promise<T> => {
   const response = await fetch(url, { credentials: "include" });
@@ -90,16 +120,10 @@ const agenticRender = async ({
     fonts.fonts,
     (fontId) => `/api/projects/${projectId}/fonts/${fontId}/content`,
   );
-  const frameRenderer = new DesignRenderer();
+  const frameRenderer = await takeFrameRenderer(scale);
   let rendererCounted = false;
   let response: Omit<RenderResponse, "resourceStats">;
   try {
-    await frameRenderer.initialize(
-      document.createElement("canvas"),
-      1,
-      1,
-      scale,
-    );
     activeRenderers += 1;
     rendererCounted = true;
     maxActiveRenderers = Math.max(maxActiveRenderers, activeRenderers);
@@ -139,6 +163,7 @@ const agenticRender = async ({
     };
   } finally {
     frameRenderer.destroy();
+    if (scale === 1) replenishScaleOneRenderers();
     if (rendererCounted) {
       activeRenderers -= 1;
       completedRenders += 1;
