@@ -61,11 +61,11 @@ const digest = async (file) =>
     .digest("hex");
 
 for (const packageName of [
-  "@agentic-design/core",
-  "@agentic-design/client",
-  "@agentic-design/renderer-pixi",
-  "@agentic-design/runtime",
-  "@agentic-design/mcp",
+  "@tva-agentic-design/core",
+  "@tva-agentic-design/client",
+  "@tva-agentic-design/renderer-pixi",
+  "@tva-agentic-design/runtime",
+  "@tva-agentic-design/mcp",
 ]) {
   execFileSync(
     "pnpm",
@@ -77,7 +77,7 @@ for (const packageName of [
   );
 }
 
-const runtimeArchiveName = `agentic-design-runtime-${version}.tgz`;
+const runtimeArchiveName = `tva-agentic-design-runtime-${version}.tgz`;
 const runtimeArchive = path.join(release, runtimeArchiveName);
 const pluginSource = path.join(root, "plugins", "agentic-design-runtime");
 const pluginStage = path.join(release, ".agentic-design-plugin-stage");

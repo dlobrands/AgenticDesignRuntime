@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RuntimeEvent } from "@agentic-design/client";
+import type { RuntimeEvent } from "@tva-agentic-design/client";
 import {
   handleRuntimeEvent,
   type RuntimeSyncActions,

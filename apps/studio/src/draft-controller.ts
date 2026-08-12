@@ -1,4 +1,4 @@
-import type { FrameOperation, Transform } from "@agentic-design/core";
+import type { FrameOperation, Transform } from "@tva-agentic-design/core";
 
 export type SaveState =
   | "booting"

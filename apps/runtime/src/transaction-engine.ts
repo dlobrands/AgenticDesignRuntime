@@ -30,7 +30,7 @@ import {
   type TransactionRequest,
   type TextNode,
   type ValidationContext,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import type { RuntimeEventBus } from "./events.js";
 import { ensureDirectory } from "./fs-safe.js";
 import { persistJournaled } from "./journal.js";

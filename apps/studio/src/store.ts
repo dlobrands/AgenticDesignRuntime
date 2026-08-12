@@ -3,13 +3,13 @@ import { immer } from "zustand/middleware/immer";
 import {
   DesignRuntimeApiError,
   DesignRuntimeClient,
-} from "@agentic-design/client";
+} from "@tva-agentic-design/client";
 import {
   detachTemplateInstanceOperations,
   detachBrandComponentOperations,
   frameResizeOperations,
   templateSourceNodeIds,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import type {
   Asset,
   AssetManifest,
@@ -36,7 +36,7 @@ import type {
   Transform,
   VectorPathCommand,
   VisualQaReport,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { startRuntimeEventSynchronization } from "./runtime-sync";
 import {
   safeRebaseConflict,

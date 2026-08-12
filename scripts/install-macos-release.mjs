@@ -52,10 +52,10 @@ if (manifest.platform !== "macOS Apple Silicon")
   );
 const files = await readdir(release);
 const runtime = files.find((name) =>
-  /^agentic-design-runtime-[0-9].*\.tgz$/.test(name),
+  /^tva-agentic-design-runtime-[0-9].*\.tgz$/.test(name),
 );
 const mcp = files.find((name) =>
-  /^agentic-design-mcp-[0-9].*\.tgz$/.test(name),
+  /^tva-agentic-design-mcp-[0-9].*\.tgz$/.test(name),
 );
 if (!runtime || !mcp)
   throw new Error("Release runtime or MCP package is missing.");

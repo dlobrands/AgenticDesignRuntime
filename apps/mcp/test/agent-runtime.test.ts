@@ -2,7 +2,7 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { sha256, stableStringify } from "@agentic-design/core";
+import { sha256, stableStringify } from "@tva-agentic-design/core";
 import {
   AGENT_PLUGIN_VERSION,
   bundledRuntimeIntegrity,
@@ -36,7 +36,7 @@ describe("agent runtime archive integrity", () => {
       path.join(
         pluginRoot,
         "packages",
-        `agentic-design-runtime-${AGENT_PLUGIN_VERSION}.tgz`,
+        `tva-agentic-design-runtime-${AGENT_PLUGIN_VERSION}.tgz`,
       ),
       "new verified runtime archive",
     );

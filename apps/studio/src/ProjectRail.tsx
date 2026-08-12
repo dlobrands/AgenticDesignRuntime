@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import type { FrameResizeStrategy } from "@agentic-design/core";
+import type { FrameResizeStrategy } from "@tva-agentic-design/core";
 import { MARKETING_FRAME_PRESETS } from "./frame-presets";
 import { ModalDialog } from "./ModalDialog";
 import { useStudio } from "./store";

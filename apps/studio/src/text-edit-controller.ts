@@ -6,7 +6,7 @@ import {
   type TextNode,
   type TextSpan,
   type TextSpanStyle,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 export type TextEditSession = {
   mode: "existing" | "new";

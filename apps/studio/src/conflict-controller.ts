@@ -1,9 +1,9 @@
-import type { DesignRuntimeApiError } from "@agentic-design/client";
+import type { DesignRuntimeApiError } from "@tva-agentic-design/client";
 import type {
   FrameOperation,
   SemanticChange,
   TransactionPreviewResult,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 export type ConflictState = {
   kind: "safe-rebase" | "overlap" | "stale-directive";

@@ -8,7 +8,7 @@ import {
   resetCropEdit,
   scaleCropSource,
 } from "../src/crop-controller";
-import type { RasterImageNode } from "@agentic-design/core";
+import type { RasterImageNode } from "@tva-agentic-design/core";
 
 const node = (): RasterImageNode => ({
   id: "11111111-1111-4111-8111-111111111111",

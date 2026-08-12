@@ -1,4 +1,4 @@
-import type { FrameOperation, RasterImageNode } from "@agentic-design/core";
+import type { FrameOperation, RasterImageNode } from "@tva-agentic-design/core";
 
 export type CropRect = NonNullable<RasterImageNode["crop"]>;
 

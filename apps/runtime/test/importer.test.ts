@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { DEFAULT_CONFIG, createProjectDocument } from "@agentic-design/core";
+import {
+  DEFAULT_CONFIG,
+  createProjectDocument,
+} from "@tva-agentic-design/core";
 import { deriveExternalOperations } from "../src/external-diff.js";
 import { importAssetBuffer, importFontBuffer } from "../src/importer.js";
 import type { ProjectState, WorkspaceState } from "../src/types.js";
@@ -15,7 +18,7 @@ import {
   simulateFrameOperations,
   type RectangleNode,
   type TextNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 const roots: string[] = [];
 afterEach(async () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
   FrameTransactionRequest,
   TransactionPreviewResult,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { buildProposalView } from "../src/proposals";
 
 const previewId = "00000000-0000-4000-8000-000000000101";

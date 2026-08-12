@@ -5,7 +5,7 @@ import {
   RuntimeError,
   type Asset,
   type FontRecord,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { fileTypeFromBuffer } from "file-type";
 import type { Font } from "fontkit";
 import { SaxesParser } from "saxes";

@@ -5,7 +5,7 @@ import {
   findNode,
   type SceneNode,
   type TemplateSlotRole,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { ModalDialog } from "./ModalDialog";
 import { useStudio } from "./store";
 

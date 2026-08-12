@@ -1,4 +1,4 @@
-import type { CanvasGuide } from "@agentic-design/core";
+import type { CanvasGuide } from "@tva-agentic-design/core";
 import type { CanvasBounds } from "./gesture-controller";
 
 export type SnapLineFeedback = {

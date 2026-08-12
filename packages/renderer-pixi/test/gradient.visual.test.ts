@@ -4,7 +4,7 @@ import type {
   GradientStop,
   LinearGradientFill,
   RadialGradientFill,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { gradientPixels } from "../src/gradient.js";
 
 const gradient = (dither: boolean): LinearGradientFill => ({

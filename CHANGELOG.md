@@ -4,6 +4,8 @@ This project follows semantic versioning. Release entries describe user-visible 
 
 ## Unreleased
 
+## 1.0.1 - 2026-08-12
+
 ### Added
 
 - Canonical project-wide mutation serialization, verified import receipts, exact journal recovery, and startup history integrity checks.
@@ -38,6 +40,7 @@ This project follows semantic versioning. Release entries describe user-visible 
 
 ### Changed
 
+- Moved the unpublished public npm package family to the owner-controlled `@tva-agentic-design` scope; product, CLI, plugin, runtime API, and workspace schema identities remain unchanged.
 - Studio operational details are available on demand as support details instead of occupying the everyday interface.
 
 ### Fixed

@@ -20,7 +20,7 @@ import {
   stableStringify,
   type RectangleNode,
   type TransactionPreviewResult,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { RuntimeEventBus } from "../src/events.js";
 import { exportDiagnostics } from "../src/diagnostics.js";
 import { resolveInside, writeJsonAtomic } from "../src/fs-safe.js";

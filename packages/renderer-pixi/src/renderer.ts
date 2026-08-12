@@ -36,7 +36,7 @@ import {
   type Stroke,
   type TextNode,
   type Transform,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { registerAgenticBlendModes } from "./blend-modes.js";
 import { dissolveFilter, luminanceToAlphaFilter } from "./filters.js";
 import { gradientCanvas, solidColorNumber } from "./gradient.js";

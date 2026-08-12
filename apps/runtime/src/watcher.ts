@@ -10,7 +10,7 @@ import {
   semanticFrameHash,
   stableStringify,
   structuredDiff,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { deriveExternalOperations } from "./external-diff.js";
 import { writeFileAtomic } from "./fs-safe.js";
 import type { TransactionEngine } from "./transaction-engine.js";

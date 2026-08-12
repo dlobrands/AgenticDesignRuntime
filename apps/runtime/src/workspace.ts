@@ -16,7 +16,7 @@ import {
   semanticFrameHash,
   validateFrame,
   type RuntimeCapabilities,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import {
   assertReadableWritableDirectory,
   ensureDirectory,

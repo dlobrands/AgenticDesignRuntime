@@ -1,6 +1,6 @@
 {
-  "name": "@agentic-design/runtime",
-  "version": "1.0.0",
+  "name": "@tva-agentic-design/runtime",
+  "version": "1.0.1",
   "private": false,
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -27,7 +27,7 @@
     "arm64"
   ],
   "scripts": {
-    "build": "tsup src/cli.ts --format esm --platform node --target node22 --clean --out-dir dist && pnpm --filter @agentic-design/studio build && node scripts/copy-studio.mjs",
+    "build": "tsup src/cli.ts --format esm --platform node --target node22 --clean --out-dir dist && pnpm --filter @tva-agentic-design/studio build && node scripts/copy-studio.mjs",
     "clean": "rimraf dist studio fonts",
     "dev": "tsx src/cli.ts dev",
     "typecheck": "tsc --noEmit"
@@ -47,7 +47,7 @@
     "sharp": "0.35.3"
   },
   "devDependencies": {
-    "@agentic-design/core": "workspace:*",
-    "@agentic-design/renderer-pixi": "workspace:*"
+    "@tva-agentic-design/core": "workspace:*",
+    "@tva-agentic-design/renderer-pixi": "workspace:*"
   }
 }

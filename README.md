@@ -2,7 +2,7 @@
 
 A local, agent-native visual design runtime for creating and revising editable layered graphics through one canonical transaction engine. Designers use the production Studio, agents use MCP or the typed HTTP client, and every accepted mutation becomes one revision with a stable semantic hash.
 
-This repository ships V1 as `1.0.0`; distribution labels are not part of the product architecture.
+This repository ships V1 as `1.0.1`; distribution labels are not part of the product architecture.
 
 The public repository is a source-visible proprietary production mirror. The
 license permits personal, non-commercial evaluation; it is not an open-source
@@ -101,7 +101,7 @@ matching npm packages after verifying the release version:
 node install-macos-release.mjs --release /path/to/extracted-release --target "$HOME/.agentic-design-runtime/current"
 node doctor-macos.mjs --target "$HOME/.agentic-design-runtime/current"
 
-pnpm add -g @agentic-design/runtime@1.0.0 @agentic-design/mcp@1.0.0
+pnpm add -g @tva-agentic-design/runtime@1.0.1 @tva-agentic-design/mcp@1.0.1
 pnpm exec playwright install chromium
 ```
 
@@ -112,7 +112,7 @@ Workspaces remain separate and are never deleted by installation or uninstall.
 Connect an MCP host to the active workspace with:
 
 ```bash
-pnpm --filter @agentic-design/mcp dev -- --workspace /absolute/path/to/design-workspace
+pnpm --filter @tva-agentic-design/mcp dev -- --workspace /absolute/path/to/design-workspace
 ```
 
 ## Agent-first Codex workflow
@@ -126,7 +126,7 @@ pnpm plugin:install:personal
 
 Start a new Codex task in any client repository and invoke `$agentic-design` with the design brief. The agent will:
 
-1. Install the plugin-pinned `1.0.0` runtime and Chromium when absent.
+1. Install the plugin-pinned `1.0.1` runtime and Chromium when absent.
 2. Create or reconnect the visible `<client-root>/design-runtime` workspace.
 3. Build through typed preview and commit operations, return PNG drafts in the task, and open the local authenticated Studio after the first draft.
 4. Accept human Studio edits as new canonical revisions.
@@ -162,7 +162,7 @@ The suites cover operation/inverse invariants, Brand Library version/pin/resourc
 Export a redacted support snapshot without project scenes, assets, fonts, or user copy:
 
 ```bash
-pnpm --filter @agentic-design/runtime exec tsx src/cli.ts diagnostics export /absolute/path/to/design-workspace
+pnpm --filter @tva-agentic-design/runtime exec tsx src/cli.ts diagnostics export /absolute/path/to/design-workspace
 ```
 
 ## Packed release

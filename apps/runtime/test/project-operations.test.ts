@@ -11,7 +11,7 @@ import {
   type BrandKitRecord,
   type HistoryEntry,
   type RectangleNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { simulateProjectOperations } from "../src/project-operations.js";
 import type { ProjectState } from "../src/types.js";
 

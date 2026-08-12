@@ -8,7 +8,7 @@ import {
   validateFrame,
   type HistoryEntry,
   type SemanticOperation,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { nodeCountFixture } from "../fixtures/performance.js";
 import { planFrameReconciliation } from "../../packages/renderer-pixi/src/reconciliation.js";
 

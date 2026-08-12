@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TransactionPreviewResult } from "@agentic-design/core";
+import type { TransactionPreviewResult } from "@tva-agentic-design/core";
 import {
   closeProposalReview,
   openProposalReview,

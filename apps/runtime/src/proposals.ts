@@ -2,7 +2,7 @@ import type {
   TransactionProposalView,
   TransactionRequest,
   TransactionPreviewResult,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 export const buildProposalView = (input: {
   request: TransactionRequest;

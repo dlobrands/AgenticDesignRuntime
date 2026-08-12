@@ -1,4 +1,4 @@
-import type { TransactionPreviewResult } from "@agentic-design/core";
+import type { TransactionPreviewResult } from "@tva-agentic-design/core";
 import type { SaveState } from "./draft-controller";
 
 export type ProposalReviewState = {

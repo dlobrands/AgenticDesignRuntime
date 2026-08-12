@@ -22,7 +22,7 @@ import {
   type ProjectOperation,
   type SceneNode,
   type SemanticOperation,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import type { ProjectState } from "./types.js";
 
 export type ProjectSimulation = {

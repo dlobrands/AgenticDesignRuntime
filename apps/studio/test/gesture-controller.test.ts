@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Transform } from "@agentic-design/core";
+import type { Transform } from "@tva-agentic-design/core";
 import {
   calculateGestureTransforms,
   combinedBounds,

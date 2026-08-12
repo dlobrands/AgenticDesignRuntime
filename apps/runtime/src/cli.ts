@@ -4,7 +4,7 @@ import { realpathSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { chromium, type BrowserContext } from "playwright";
-import { RuntimeError } from "@agentic-design/core";
+import { RuntimeError } from "@tva-agentic-design/core";
 import { RuntimeEventBus } from "./events.js";
 import { recoverJournals } from "./journal.js";
 import { RuntimeLogger, RuntimeMetrics } from "./logger.js";

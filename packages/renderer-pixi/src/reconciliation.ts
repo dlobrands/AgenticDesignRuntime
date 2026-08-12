@@ -1,4 +1,8 @@
-import type { FrameDocument, SceneNode, Transform } from "@agentic-design/core";
+import type {
+  FrameDocument,
+  SceneNode,
+  Transform,
+} from "@tva-agentic-design/core";
 
 export type RendererDirtyCategory =
   | "transform"

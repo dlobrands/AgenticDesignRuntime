@@ -7,7 +7,7 @@ import type {
   ProjectDocument,
   RuntimeCapabilities,
   BrandKitRecord,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 export type ProjectState = {
   directory: string;

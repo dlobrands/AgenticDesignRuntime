@@ -1,6 +1,6 @@
 {
-  "name": "@agentic-design/studio",
-  "version": "1.0.0",
+  "name": "@tva-agentic-design/studio",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,9 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agentic-design/client": "workspace:*",
-    "@agentic-design/core": "workspace:*",
-    "@agentic-design/renderer-pixi": "workspace:*",
+    "@tva-agentic-design/client": "workspace:*",
+    "@tva-agentic-design/core": "workspace:*",
+    "@tva-agentic-design/renderer-pixi": "workspace:*",
     "@fontsource/ibm-plex-mono": "5.3.0",
     "@fontsource/ibm-plex-sans": "5.3.0",
     "immer": "11.1.15",

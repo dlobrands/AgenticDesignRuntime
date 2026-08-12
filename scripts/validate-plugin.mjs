@@ -59,7 +59,7 @@ const packed = await stat(path.join(plugin, "compatibility.json"))
 if (packed) {
   for (const relative of [
     "dist/agent-cli.js",
-    `packages/agentic-design-runtime-${productMetadata.productVersion}.tgz`,
+    `packages/tva-agentic-design-runtime-${productMetadata.productVersion}.tgz`,
   ]) {
     const info = await stat(path.join(plugin, relative)).catch(() => undefined);
     if (!info?.isFile())

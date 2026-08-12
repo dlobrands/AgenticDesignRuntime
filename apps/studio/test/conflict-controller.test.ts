@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DesignRuntimeApiError } from "@agentic-design/client";
+import { DesignRuntimeApiError } from "@tva-agentic-design/client";
 import type {
   FrameOperation,
   TransactionPreviewResult,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import {
   safeRebaseConflict,
   semanticConflictFromError,

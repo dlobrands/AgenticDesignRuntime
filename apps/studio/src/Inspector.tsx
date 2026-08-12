@@ -18,7 +18,7 @@ import {
   type Stroke,
   type VectorPathCommand,
   type VectorPathNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { LiveColorPicker } from "./ColorPicker";
 import { cropResolution } from "./crop-controller";
 import { MARKETING_FRAME_PRESETS } from "./frame-presets";

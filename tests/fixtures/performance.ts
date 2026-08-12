@@ -4,7 +4,7 @@ import {
   createTransform,
   type FrameDocument,
   type RectangleNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 export const rectangleFixture = (index: number): RectangleNode => ({
   id: randomUUID(),

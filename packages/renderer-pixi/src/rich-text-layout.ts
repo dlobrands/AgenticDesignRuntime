@@ -4,7 +4,7 @@ import {
   type TextNode,
   type TextSpan,
   type TextSpanStyle,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 export type ResolvedTextSpanStyle = {
   fontFamily: string;

@@ -21,7 +21,7 @@ import {
   type SemanticOperation,
   type TransactionCommitResult,
   type TransactionPreviewResult,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import {
   ensureDirectory,
   readJson,

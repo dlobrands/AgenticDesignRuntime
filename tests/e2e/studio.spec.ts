@@ -16,7 +16,7 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { SUPPORTED_BLEND_MODES } from "@agentic-design/core";
+import { SUPPORTED_BLEND_MODES } from "@tva-agentic-design/core";
 
 const runtimeRequire = createRequire(
   path.join(process.cwd(), "apps/runtime/package.json"),

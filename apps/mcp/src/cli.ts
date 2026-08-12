@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   DesignRuntimeApiError,
   DesignRuntimeClient,
-} from "@agentic-design/client";
+} from "@tva-agentic-design/client";
 import {
   CreateBrandKitInputSchema,
   DesignBriefInputSchema,
@@ -23,7 +23,7 @@ import {
   findNode,
   searchNodes,
   templateSourceNodeIds,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as z from "zod/v4";

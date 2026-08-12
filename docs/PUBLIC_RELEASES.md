@@ -31,7 +31,33 @@ paid private-environment review protection is unavailable.
 GitHub Releases contain the macOS arm64 bundle, component tarballs, plugin,
 installer, checksums, release manifest, SBOM, and provenance. npm publishes the
 exact-version public package family with provenance. Studio remains a private
-workspace package bundled inside `@agentic-design/runtime`.
+workspace package bundled inside `@tva-agentic-design/runtime`.
+
+## npm identity and trusted publisher
+
+The owner-controlled npm organization is `tva-agentic-design`. The public
+package family is:
+
+- `@tva-agentic-design/core`
+- `@tva-agentic-design/client`
+- `@tva-agentic-design/renderer-pixi`
+- `@tva-agentic-design/runtime`
+- `@tva-agentic-design/mcp`
+
+Each package uses the same trusted-publisher identity: GitHub owner
+`dlobrands`, public repository `AgenticDesignRuntime`, workflow
+`publish-npm.yml`, environment `public-production`, and allowed action
+`npm publish`. The private promotion workflow alone may create the exact public
+source tag and dispatch this public workflow. npm exposes this
+package-level setting only after the package exists, so the first version must
+be published with a narrowly scoped, short-lived bootstrap credential or an
+interactive owner-authenticated publish. Configure and verify OIDC for all five
+packages immediately afterward, then revoke the bootstrap credential. Do not
+store an npm token in source or retain it as the normal release path.
+
+The public workflow identity must match each package's public
+`repository.url`. Binding npm to the private development repository would make
+that identity inconsistent and would prevent public-repository provenance.
 
 Automatic trusted updates remain disabled until an official origin, signing
 custody, protected-tag governance, and verification identity are separately

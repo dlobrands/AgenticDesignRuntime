@@ -1,7 +1,7 @@
 import { cpus, homedir, platform, arch, release, totalmem } from "node:os";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { DesignConfigSchema, RuntimeError } from "@agentic-design/core";
+import { DesignConfigSchema, RuntimeError } from "@tva-agentic-design/core";
 import {
   assertReadableWritableDirectory,
   ensureDirectory,

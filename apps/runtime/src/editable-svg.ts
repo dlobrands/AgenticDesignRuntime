@@ -2,7 +2,7 @@ import type {
   ShapeFill,
   Stroke,
   VectorPathCommand,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 export type EditableSvgVector = {
   commands: VectorPathCommand[];

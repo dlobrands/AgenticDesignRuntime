@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TextNode } from "@agentic-design/core";
+import type { TextNode } from "@tva-agentic-design/core";
 import {
   beginNewTextEdit,
   beginTextEdit,

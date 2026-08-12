@@ -1,6 +1,6 @@
 {
-  "name": "@agentic-design/mcp",
-  "version": "1.0.0",
+  "name": "@tva-agentic-design/mcp",
+  "version": "1.0.1",
   "private": false,
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -27,8 +27,8 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@agentic-design/client": "workspace:*",
-    "@agentic-design/core": "workspace:*",
+    "@tva-agentic-design/client": "workspace:*",
+    "@tva-agentic-design/core": "workspace:*",
     "@modelcontextprotocol/sdk": "1.30.0",
     "zod": "4.4.3"
   }

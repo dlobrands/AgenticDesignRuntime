@@ -1,4 +1,4 @@
-import { findNode, type FrameDocument } from "@agentic-design/core";
+import { findNode, type FrameDocument } from "@tva-agentic-design/core";
 
 const unique = (nodeIds: readonly string[]): string[] => [...new Set(nodeIds)];
 

@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createTransform, semanticFrameHash } from "@agentic-design/core";
+import { createTransform, semanticFrameHash } from "@tva-agentic-design/core";
 import {
   buildBrandFrameOperations,
   brandKitRevisionDirectory,

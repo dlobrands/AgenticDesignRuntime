@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { readFile, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { RuntimeError, sha256, stableStringify } from "@agentic-design/core";
+import {
+  RuntimeError,
+  sha256,
+  stableStringify,
+} from "@tva-agentic-design/core";
 import {
   appendJsonLine,
   commitStagedFile,

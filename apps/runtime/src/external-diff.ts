@@ -4,7 +4,7 @@ import {
   type FrameDocument,
   type SceneNode,
   type SemanticOperation,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 type NodeInfo = {
   node: SceneNode;

@@ -14,13 +14,13 @@ import { homedir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { promisify } from "node:util";
-import { DesignRuntimeClient } from "@agentic-design/client";
+import { DesignRuntimeClient } from "@tva-agentic-design/client";
 import {
   UpdateManifestSchema,
   compareSemver,
   sha256,
   stableStringify,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import {
   PRODUCT_VERSION,
   RUNTIME_API_VERSION,
@@ -84,7 +84,7 @@ const pluginRuntimeArchive = (pluginRoot: string): string =>
   path.join(
     pluginRoot,
     "packages",
-    `agentic-design-runtime-${AGENT_PLUGIN_VERSION}.tgz`,
+    `tva-agentic-design-runtime-${AGENT_PLUGIN_VERSION}.tgz`,
   );
 
 const fileSha256 = async (filePath: string): Promise<string> =>

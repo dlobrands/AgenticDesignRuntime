@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DesignRuntimeApiError } from "@agentic-design/client";
-import type { DesignRuntimeClient } from "@agentic-design/client";
+import { DesignRuntimeApiError } from "@tva-agentic-design/client";
+import type { DesignRuntimeClient } from "@tva-agentic-design/client";
 import {
   createFrameDocument,
   createProjectTemplateDefinition,
@@ -9,7 +9,7 @@ import {
   type FrameDocument,
   type ProjectDocument,
   type RectangleNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { createStudioStore } from "../src/store";
 
 const now = "2026-08-08T12:00:00.000Z";

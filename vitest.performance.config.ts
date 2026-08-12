@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   resolve: {
     alias: {
-      "@agentic-design/core": fileURLToPath(
+      "@tva-agentic-design/core": fileURLToPath(
         new URL("./packages/core/src/index.ts", import.meta.url),
       ),
     },

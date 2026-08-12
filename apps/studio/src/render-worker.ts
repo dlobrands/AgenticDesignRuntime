@@ -4,13 +4,13 @@ import {
   type FontManifest,
   type FrameDocument,
   type TextNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import {
   DesignRenderer,
   loadProjectFonts,
   measureTextNode,
   rendererCapabilities,
-} from "@agentic-design/renderer-pixi";
+} from "@tva-agentic-design/renderer-pixi";
 
 type RenderWarning = { code: string; message: string; nodeIds?: string[] };
 type RenderResponse = {

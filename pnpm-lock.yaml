@@ -68,10 +68,10 @@ importers:
 
   apps/mcp:
     devDependencies:
-      '@agentic-design/client':
+      '@tva-agentic-design/client':
         specifier: workspace:*
         version: link:../../packages/client
-      '@agentic-design/core':
+      '@tva-agentic-design/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@modelcontextprotocol/sdk':
@@ -120,22 +120,22 @@ importers:
         specifier: 0.35.3
         version: 0.35.3(@types/node@24.13.3)
     devDependencies:
-      '@agentic-design/core':
+      '@tva-agentic-design/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@agentic-design/renderer-pixi':
+      '@tva-agentic-design/renderer-pixi':
         specifier: workspace:*
         version: link:../../packages/renderer-pixi
 
   apps/studio:
     dependencies:
-      '@agentic-design/client':
+      '@tva-agentic-design/client':
         specifier: workspace:*
         version: link:../../packages/client
-      '@agentic-design/core':
+      '@tva-agentic-design/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@agentic-design/renderer-pixi':
+      '@tva-agentic-design/renderer-pixi':
         specifier: workspace:*
         version: link:../../packages/renderer-pixi
       '@fontsource/ibm-plex-mono':
@@ -159,7 +159,7 @@ importers:
 
   packages/client:
     dependencies:
-      '@agentic-design/core':
+      '@tva-agentic-design/core':
         specifier: workspace:*
         version: link:../core
 
@@ -171,7 +171,7 @@ importers:
 
   packages/renderer-pixi:
     dependencies:
-      '@agentic-design/core':
+      '@tva-agentic-design/core':
         specifier: workspace:*
         version: link:../core
       pixi.js:

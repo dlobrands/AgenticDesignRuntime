@@ -3,7 +3,7 @@ import {
   findNodeLocation,
   type AdjustmentNode,
   type SceneNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { executeStudioCommand } from "./commands";
 import { useStudio } from "./store";
 

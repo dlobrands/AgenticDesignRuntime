@@ -1,4 +1,7 @@
-import type { DesignRuntimeClient, RuntimeEvent } from "@agentic-design/client";
+import type {
+  DesignRuntimeClient,
+  RuntimeEvent,
+} from "@tva-agentic-design/client";
 
 export type RuntimeSyncSnapshot = {
   sessionId?: string;

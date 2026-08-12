@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFrameDocument } from "@agentic-design/core";
+import { createFrameDocument } from "@tva-agentic-design/core";
 import {
   retainExistingSelection,
   selectNode,

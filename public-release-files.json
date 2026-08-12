@@ -14,7 +14,7 @@
     "SECURITY.md",
     "SUPPORT.md",
     "CONTRIBUTING.md",
-    "docs/PUBLIC_RELEASES.md",
-    ".github/workflows/ci.yml"
+    ".github/workflows/publish-npm.yml",
+    "docs/PUBLIC_RELEASES.md"
   ]
 }

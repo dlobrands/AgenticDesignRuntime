@@ -1,4 +1,7 @@
-import type { VectorPathCommand, VectorPathPoint } from "@agentic-design/core";
+import type {
+  VectorPathCommand,
+  VectorPathPoint,
+} from "@tva-agentic-design/core";
 
 export type VectorPathSubpath = {
   points: Array<{ x: number; y: number }>;

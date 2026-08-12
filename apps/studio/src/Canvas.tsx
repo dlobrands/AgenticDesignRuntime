@@ -15,12 +15,12 @@ import {
   type TextNode,
   type TextSpanStyle,
   type Transform,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import {
   DesignRenderer,
   loadProjectFonts,
   measureTextNode,
-} from "@agentic-design/renderer-pixi";
+} from "@tva-agentic-design/renderer-pixi";
 import { executeStudioCommand } from "./commands";
 import {
   calculateGestureTransforms,

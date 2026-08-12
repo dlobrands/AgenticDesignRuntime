@@ -26,7 +26,7 @@ import type {
   VectorPathCommand,
   ShapeFill,
   Stroke,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 
 export type ExportArtifact = {
   path: string;

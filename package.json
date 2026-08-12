@@ -1,6 +1,6 @@
 {
   "name": "agentic-design-runtime",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.5",
@@ -8,10 +8,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm --filter '!@agentic-design/studio' -r --if-present build",
+    "build": "pnpm --filter '!@tva-agentic-design/studio' -r --if-present build",
     "build:check": "node scripts/check-build-output.mjs",
     "clean": "pnpm -r --if-present clean",
-    "dev": "pnpm --filter @agentic-design/runtime dev",
+    "dev": "pnpm --filter @tva-agentic-design/runtime dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",

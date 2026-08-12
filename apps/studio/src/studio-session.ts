@@ -1,4 +1,4 @@
-import type { RuntimeClientIdentity } from "@agentic-design/client";
+import type { RuntimeClientIdentity } from "@tva-agentic-design/client";
 import type { RuntimeSyncSnapshot } from "./runtime-sync";
 
 export type StudioRoute = { projectId?: string; frameId?: string };

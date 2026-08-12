@@ -70,7 +70,7 @@ import {
   type ExportSettings,
   type TextNode,
   type TransactionRequest,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { ChromiumExportWorker } from "./export-worker.js";
 import { UpdateManager } from "./update-manager.js";
 import {

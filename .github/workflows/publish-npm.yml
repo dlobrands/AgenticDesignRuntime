@@ -1,0 +1,70 @@
+name: publish-npm-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Exact product version without the v prefix"
+        required: true
+        type: string
+      confirmation:
+        description: "Type PUBLISH ADR vX.Y.Z exactly"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-production-${{ inputs.release_version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'dlobrands/AgenticDesignRuntime' &&
+      github.actor == github.repository_owner &&
+      startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: public-production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - name: Verify exact public production tag
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          VERSION="$(node -p "require('./product-metadata.json').productVersion")"
+          test "${RELEASE_VERSION}" = "${VERSION}"
+          test "${CONFIRMATION}" = "PUBLISH ADR v${VERSION}"
+          test "${GITHUB_REF}" = "refs/tags/v${VERSION}"
+          test "$(git rev-parse HEAD)" = "$(git rev-list -n 1 "v${VERSION}")"
+          test "$(node -p "require('./PUBLIC_SOURCE_MANIFEST.json').repository")" = "dlobrands/AgenticDesignRuntime"
+          for manifest in packages/core/package.json packages/client/package.json packages/renderer-pixi/package.json apps/runtime/package.json apps/mcp/package.json; do
+            test "$(node -p "require('./${manifest}').repository.url")" = "git+https://github.com/dlobrands/AgenticDesignRuntime.git"
+          done
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm pack:release
+      - run: shasum -a 256 -c SHA256SUMS
+        working-directory: release
+      - name: Publish exact public packages through npm OIDC
+        run: |
+          npm publish ./release/tva-agentic-design-core-${{ inputs.release_version }}.tgz --access public
+          npm publish ./release/tva-agentic-design-client-${{ inputs.release_version }}.tgz --access public
+          npm publish ./release/tva-agentic-design-renderer-pixi-${{ inputs.release_version }}.tgz --access public
+          npm publish ./release/tva-agentic-design-runtime-${{ inputs.release_version }}.tgz --access public
+          npm publish ./release/tva-agentic-design-mcp-${{ inputs.release_version }}.tgz --access public

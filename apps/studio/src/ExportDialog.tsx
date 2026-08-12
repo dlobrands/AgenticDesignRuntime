@@ -3,7 +3,7 @@ import type {
   ExportFormat,
   ExportPreset,
   ExportSettings,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { ModalDialog } from "./ModalDialog";
 import { useStudio } from "./store";
 

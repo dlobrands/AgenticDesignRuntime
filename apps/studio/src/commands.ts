@@ -6,7 +6,7 @@ import {
   findNodeLocation,
   type FrameOperation,
   type SceneNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { useStudio, type StudioState } from "./store";
 
 export type AlignmentMode =

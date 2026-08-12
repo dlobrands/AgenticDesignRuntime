@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTransform, type TextNode } from "@agentic-design/core";
+import { createTransform, type TextNode } from "@tva-agentic-design/core";
 import { layoutRichTextNode } from "../src/rich-text-layout.js";
 
 const node = (): TextNode => ({

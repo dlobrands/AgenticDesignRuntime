@@ -11,7 +11,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { RuntimeError, stableStringify } from "@agentic-design/core";
+import { RuntimeError, stableStringify } from "@tva-agentic-design/core";
 
 export const ensureDirectory = async (
   directory: string,

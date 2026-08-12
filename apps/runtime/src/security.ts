@@ -5,7 +5,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { RuntimeError, type Actor } from "@agentic-design/core";
+import { RuntimeError, type Actor } from "@tva-agentic-design/core";
 import { readJson, writeJsonAtomic } from "./fs-safe.js";
 import type { WorkspaceState } from "./types.js";
 

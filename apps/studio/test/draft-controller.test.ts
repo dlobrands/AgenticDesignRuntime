@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FrameOperation, Transform } from "@agentic-design/core";
+import type { FrameOperation, Transform } from "@tva-agentic-design/core";
 import {
   transitionDraftOperations,
   transitionDraftTransforms,

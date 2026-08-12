@@ -17,7 +17,7 @@ import {
   unsignedUpdateManifest,
   type TrustedUpdateConfiguration,
   type UpdateManifest,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import {
   UpdateManager,
   inspectRuntimeArchive,
@@ -225,7 +225,7 @@ describe("trusted runtime updates", () => {
       status: "staged",
       activated: false,
     });
-    expect((await manager.state()).current?.version).toBe("1.0.0");
+    expect((await manager.state()).current?.version).toBe("1.0.1");
     expect((await manager.state()).staged?.version).toBe("1.1.0");
     await expect(manager.apply()).resolves.toMatchObject({
       status: "applied",
@@ -235,7 +235,7 @@ describe("trusted runtime updates", () => {
     });
     const applied = await manager.state();
     expect(applied.current?.version).toBe("1.1.0");
-    expect(applied.previous?.version).toBe("1.0.0");
+    expect(applied.previous?.version).toBe("1.0.1");
     expect(applied.staged).toBeUndefined();
     expect(
       await readFile(
@@ -245,7 +245,7 @@ describe("trusted runtime updates", () => {
     ).toContain('"releaseId": "release-1"');
     await expect(manager.rollback()).resolves.toMatchObject({
       status: "rolled-back",
-      version: "1.0.0",
+      version: "1.0.1",
       restartRequired: true,
     });
     expect((await manager.state()).current?.installPath).toBe(setup.baseline);
@@ -370,7 +370,7 @@ describe("trusted runtime updates", () => {
       const manager = setup.manager({ healthCheck });
       await manager.fetch();
       await expect(manager.apply()).rejects.toBeTruthy();
-      expect((await manager.state()).current?.version).toBe("1.0.0");
+      expect((await manager.state()).current?.version).toBe("1.0.1");
       const installs = await readdir(
         path.join(setup.root, "updates", "installs"),
       ).catch(() => []);

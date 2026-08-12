@@ -8,7 +8,7 @@ import {
   type RectangleNode,
   type TextNode,
   type VectorPathNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { planFrameReconciliation } from "../src/reconciliation.js";
 
 const rectangle = (name = "Card"): RectangleNode => ({

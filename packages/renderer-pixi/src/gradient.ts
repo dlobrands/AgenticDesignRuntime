@@ -1,4 +1,4 @@
-import { deterministicSeed, type ShapeFill } from "@agentic-design/core";
+import { deterministicSeed, type ShapeFill } from "@tva-agentic-design/core";
 
 type Rgba = { r: number; g: number; b: number; a: number };
 

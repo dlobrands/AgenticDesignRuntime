@@ -10,7 +10,7 @@ import {
   type ExportSettings,
   type FrameDocument,
   type TextNode,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import { writeFileAtomic } from "./fs-safe.js";
 import type { ProjectState, WorkspaceState } from "./types.js";
 import { PRODUCT_VERSION, REFERENCE_VERSIONS } from "./version.js";

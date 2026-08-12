@@ -29,7 +29,7 @@ import {
   type TrustedUpdateConfiguration,
   type UpdateManifest,
   type UpdateState,
-} from "@agentic-design/core";
+} from "@tva-agentic-design/core";
 import {
   ensureDirectory,
   readJson,

@@ -38,17 +38,17 @@ const sourcePluginManifest = JSON.parse(
 const expectedPluginVersion = sourcePluginManifest.version;
 const files = await readdir(release);
 const runtime = files.find((name) =>
-  /^agentic-design-runtime-[0-9].*\.tgz$/.test(name),
+  /^tva-agentic-design-runtime-[0-9].*\.tgz$/.test(name),
 );
 const mcp = files.find((name) =>
-  /^agentic-design-mcp-[0-9].*\.tgz$/.test(name),
+  /^tva-agentic-design-mcp-[0-9].*\.tgz$/.test(name),
 );
 const plugin = files.find((name) =>
   /^agentic-design-runtime-plugin-[0-9].*\.tgz$/.test(name),
 );
 const publicLibraries = ["core", "client", "renderer-pixi"].map((packageName) =>
   files.find((name) =>
-    new RegExp(`^agentic-design-${packageName}-[0-9].*\\.tgz$`).test(name),
+    new RegExp(`^tva-agentic-design-${packageName}-[0-9].*\\.tgz$`).test(name),
   ),
 );
 if (!runtime || !mcp || !plugin || publicLibraries.some((name) => !name))
@@ -96,15 +96,15 @@ try {
       type: "module",
       packageManager: "pnpm@10.34.5",
       dependencies: {
-        "@agentic-design/core": `file:${path.join(release, publicLibraries[0])}`,
-        "@agentic-design/client": `file:${path.join(release, publicLibraries[1])}`,
-        "@agentic-design/renderer-pixi": `file:${path.join(release, publicLibraries[2])}`,
-        "@agentic-design/runtime": `file:${path.join(release, runtime)}`,
-        "@agentic-design/mcp": `file:${path.join(release, mcp)}`,
+        "@tva-agentic-design/core": `file:${path.join(release, publicLibraries[0])}`,
+        "@tva-agentic-design/client": `file:${path.join(release, publicLibraries[1])}`,
+        "@tva-agentic-design/renderer-pixi": `file:${path.join(release, publicLibraries[2])}`,
+        "@tva-agentic-design/runtime": `file:${path.join(release, runtime)}`,
+        "@tva-agentic-design/mcp": `file:${path.join(release, mcp)}`,
       },
       pnpm: {
         overrides: {
-          "@agentic-design/core": `file:${path.join(release, publicLibraries[0])}`,
+          "@tva-agentic-design/core": `file:${path.join(release, publicLibraries[0])}`,
         },
       },
     })}\n`,

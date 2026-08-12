@@ -1,6 +1,6 @@
 {
-  "name": "@agentic-design/client",
-  "version": "1.0.0",
+  "name": "@tva-agentic-design/client",
+  "version": "1.0.1",
   "private": false,
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -27,7 +27,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agentic-design/core": "workspace:*"
+    "@tva-agentic-design/core": "workspace:*"
   },
   "devDependencies": {}
 }
