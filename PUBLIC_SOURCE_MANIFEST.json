@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "487727738350b8b5a563aa1b748ccf25192d11bf",
-  "sourceCommittedAt": "2026-08-11T22:29:16-04:00",
+  "sourceCommit": "ba8d21c12f1b408362cf9e6a0e3c182ce42383c8",
+  "sourceCommittedAt": "2026-08-11T22:41:36-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -1337,8 +1337,8 @@
     },
     {
       "path": "tests/e2e/studio.spec.ts",
-      "sizeBytes": 375511,
-      "sha256": "cd0ceb269dc98cfee4743f09041b1c63d5748ce40545778326b098816e954fd2"
+      "sizeBytes": 375595,
+      "sha256": "cd287200fbf6b049730ce73cdbaeeed618018e915e408d5a4d44f0c70ca8de3e"
     },
     {
       "path": "tests/fixtures/performance.ts",
