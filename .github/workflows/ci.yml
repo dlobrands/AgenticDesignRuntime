@@ -1,0 +1,62 @@
+name: release-gates
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm plugin:validate
+      - run: pnpm test
+      - run: pnpm test:visual
+      - run: pnpm test:performance
+      - run: pnpm build
+      - run: pnpm public:snapshot
+      - run: pnpm public:verify
+
+  macos-release:
+    needs: quality
+    runs-on: macos-14
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - run: test "$(uname -m)" = "arm64"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install chromium
+      - run: pnpm build
+      - run: pnpm test:e2e
+      - run: pnpm pack:release
+      - run: pnpm verify:packed
+      - run: shasum -a 256 -c SHA256SUMS
+        working-directory: release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agentic-design-runtime-macos-arm64
+          path: release/
+          if-no-files-found: error

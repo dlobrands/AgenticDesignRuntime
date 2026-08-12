@@ -1,0 +1,23 @@
+{
+  "name": "@agentic-design/studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "clean": "rimraf dist",
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agentic-design/client": "workspace:*",
+    "@agentic-design/core": "workspace:*",
+    "@agentic-design/renderer-pixi": "workspace:*",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "immer": "11.1.15",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zustand": "5.0.14"
+  }
+}

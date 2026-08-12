@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agentic-design-runtime": {
+      "command": "node",
+      "args": ["./dist/agent-cli.js", "--plugin-root", "."],
+      "cwd": "."
+    }
+  }
+}

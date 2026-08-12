@@ -1,0 +1,10 @@
+node_modules
+dist
+apps/runtime/studio
+apps/runtime/fonts
+coverage
+playwright-report
+test-results
+release
+LICENSE
+pnpm-lock.yaml

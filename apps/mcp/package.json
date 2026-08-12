@@ -1,0 +1,35 @@
+{
+  "name": "@agentic-design/mcp",
+  "version": "1.0.0",
+  "private": false,
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dlobrands/AgenticDesignRuntime.git",
+    "directory": "apps/mcp"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "bin": {
+    "design-runtime-mcp": "dist/cli.js",
+    "agentic-design-mcp": "dist/agent-cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
+    "dev": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@agentic-design/client": "workspace:*",
+    "@agentic-design/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.4.3"
+  }
+}

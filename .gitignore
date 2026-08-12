@@ -1,0 +1,17 @@
+node_modules/
+dist/
+apps/runtime/studio/
+apps/runtime/fonts/
+coverage/
+playwright-report/
+test-results/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+.design-runtime/
+design-runtime/
+projects/
+*.tgz
+public-snapshot/

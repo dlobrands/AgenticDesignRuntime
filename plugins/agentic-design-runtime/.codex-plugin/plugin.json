@@ -1,0 +1,26 @@
+{
+  "name": "agentic-design-runtime",
+  "version": "0.0.1",
+  "description": "Create and revise deterministic, editable layered graphics through the local Agentic Design Runtime.",
+  "author": {
+    "name": "David Logan"
+  },
+  "license": "Proprietary",
+  "keywords": ["design", "graphics", "agentic", "pixi", "mcp"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agentic Design Runtime",
+    "shortDescription": "Build editable graphics with local agents",
+    "longDescription": "Agentic Design Runtime gives Codex a complete local visual-design workflow: install and operate the pinned runtime, create or resume client workspaces, build graphics through typed transactions, render previews into chat, open Studio for human adjustments, and export approved PNG files.",
+    "developerName": "David Logan",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Create an editable campaign graphic and show me the preview.",
+      "Revise my existing layered graphic and preserve its history.",
+      "Open Studio so I can adjust this design with you."
+    ],
+    "brandColor": "#315CF5"
+  },
+  "mcpServers": "./.mcp.json"
+}

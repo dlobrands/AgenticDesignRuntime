@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "publicRepository": "dlobrands/AgenticDesignRuntime",
+  "privateRepository": "dlobrands/AgenticDesignRuntime-Internal",
+  "excluded": [
+    ".github/.DS_Store",
+    ".github/workflows/promote-public.yml",
+    "docs/ADR_PRODUCT_MATURITY_GOAL.md",
+    "release/**"
+  ],
+  "required": [
+    "LICENSE",
+    "README.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "CONTRIBUTING.md",
+    "docs/PUBLIC_RELEASES.md",
+    ".github/workflows/ci.yml"
+  ]
+}

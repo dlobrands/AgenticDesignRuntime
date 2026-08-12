@@ -1,0 +1,33 @@
+{
+  "name": "@agentic-design/renderer-pixi",
+  "version": "1.0.0",
+  "private": false,
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dlobrands/AgenticDesignRuntime.git",
+    "directory": "packages/renderer-pixi"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agentic-design/core": "workspace:*",
+    "pixi.js": "8.19.0"
+  }
+}

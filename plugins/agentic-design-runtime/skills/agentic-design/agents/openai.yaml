@@ -1,0 +1,7 @@
+interface:
+  display_name: "Agentic Design"
+  short_description: "Create and revise editable graphics"
+  default_prompt: "Use $agentic-design to create an editable graphic and show me the preview."
+  brand_color: "#315CF5"
+policy:
+  allow_implicit_invocation: true
