@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "3147a61bcfb316a3cfa36c970628c956e3608cb2",
-  "sourceCommittedAt": "2026-08-11T22:24:27-04:00",
+  "sourceCommit": "487727738350b8b5a563aa1b748ccf25192d11bf",
+  "sourceCommittedAt": "2026-08-11T22:29:16-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -1287,8 +1287,8 @@
     },
     {
       "path": "scripts/create-public-snapshot.mjs",
-      "sizeBytes": 3776,
-      "sha256": "a2ca72a33a4cebfbd2dd8aa94a276baff4c4c1e016708dba282bc77acded0a83"
+      "sizeBytes": 3826,
+      "sha256": "782c90cd38e43f8a5bfd9e8e11eb897b733e826cbb13e24c22ff2ad4b5886097"
     },
     {
       "path": "scripts/doctor-macos.mjs",

@@ -40,7 +40,9 @@ const tracked = execFileSync(
   .filter(Boolean)
   .sort();
 const files = tracked.filter(
-  (file) => !excluded.some((pattern) => matches(file, pattern)),
+  (file) =>
+    file !== "PUBLIC_SOURCE_MANIFEST.json" &&
+    !excluded.some((pattern) => matches(file, pattern)),
 );
 
 for (const required of configuration.required)
