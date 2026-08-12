@@ -114,6 +114,7 @@ export function CanvasSurface() {
   const renderEpochRef = useRef(0);
   const renderQueueRef = useRef<Promise<void>>(Promise.resolve());
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const textEditSessionRef = useRef<TextEditSession | undefined>(undefined);
   const textSelectionRef = useRef({ start: 0, end: 0 });
   const initialTextSelectionRef = useRef<
     { start: number; end: number } | undefined
@@ -225,6 +226,7 @@ export function CanvasSurface() {
         : { start: caretIndex, end: caretIndex };
     select(node.id);
     beginDraftSession("text", node.id);
+    textEditSessionRef.current = session;
     setTextEditSession(session);
     updateTextSelection(0, node.text.length);
     setToolState((state) =>
@@ -300,12 +302,14 @@ export function CanvasSurface() {
   };
 
   const updateTextDraft = (text: string) => {
-    if (!textEditSession) return;
-    const next = updateTextEdit(textEditSession, text);
+    const session = textEditSessionRef.current;
+    if (!session) return;
+    const next = updateTextEdit(session, text);
     applyTextEditSession(next);
   };
 
   const applyTextEditSession = (next: TextEditSession) => {
+    textEditSessionRef.current = next;
     setTextEditSession(next);
     const operation = textEditOperation(next);
     setDraftOperations(operation ? [operation] : undefined);
@@ -313,43 +317,33 @@ export function CanvasSurface() {
 
   const formatTextSelection = (style: TextSpanStyle) => {
     const selection = textSelectionRef.current;
-    if (!textEditSession || selection.start >= selection.end) return;
+    const session = textEditSessionRef.current;
+    if (!session || selection.start >= selection.end) return;
     applyTextEditSession(
-      formatTextEditSelection(
-        textEditSession,
-        selection.start,
-        selection.end,
-        style,
-      ),
+      formatTextEditSelection(session, selection.start, selection.end, style),
     );
-    requestAnimationFrame(() => {
-      const editor = textAreaRef.current;
-      if (!editor) return;
-      editor.focus({ preventScroll: true });
-      editor.setSelectionRange(selection.start, selection.end);
-    });
   };
 
   const flattenTextFormatting = () => {
-    if (!textEditSession) return;
-    applyTextEditSession(flattenTextEditFormatting(textEditSession));
-    requestAnimationFrame(() =>
-      textAreaRef.current?.focus({ preventScroll: true }),
-    );
+    const session = textEditSessionRef.current;
+    if (!session) return;
+    applyTextEditSession(flattenTextEditFormatting(session));
   };
 
   const cancelTextEdit = () => {
-    if (!textEditSession) return;
+    if (!textEditSessionRef.current) return;
     setDraftOperations();
     endDraftSession();
+    textEditSessionRef.current = undefined;
     setTextEditSession(undefined);
     setToolState((state) => transitionToolState(state, { type: "cancel" }));
     canvasRef.current?.focus({ preventScroll: true });
   };
 
   const commitTextEdit = async () => {
-    if (!textEditSession) return;
-    const operation = textEditOperation(textEditSession);
+    const session = textEditSessionRef.current;
+    if (!session) return;
+    const operation = textEditOperation(session);
     if (!operation) {
       cancelTextEdit();
       return;
@@ -357,6 +351,7 @@ export function CanvasSurface() {
     setDraftOperations([operation]);
     await commitDraftOperations();
     endDraftSession();
+    textEditSessionRef.current = undefined;
     setTextEditSession(undefined);
     setToolState((state) => transitionToolState(state, { type: "finish" }));
     canvasRef.current?.focus({ preventScroll: true });

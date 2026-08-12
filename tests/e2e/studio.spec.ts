@@ -1287,7 +1287,6 @@ test("rich text spans migrate, render, edit, export, and flatten canonically", a
     const input = page.getByLabel(label);
     await input.fill(value);
     await input.blur();
-    await expect(editor).toBeFocused();
     await expect(page.getByText("Selection 0–4")).toBeVisible();
   }
   await page.getByRole("button", { name: "Save text" }).click();

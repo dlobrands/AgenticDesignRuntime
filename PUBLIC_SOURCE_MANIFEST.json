@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "debbe319ae29eacdac44255fcb4bcfe54f7d2c19",
-  "sourceCommittedAt": "2026-08-11T23:10:21-04:00",
+  "sourceCommit": "1a5a7faded0e1270c4495aa71eb49df9c6e1c0b7",
+  "sourceCommittedAt": "2026-08-11T23:48:23-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -332,8 +332,8 @@
     },
     {
       "path": "apps/studio/src/Canvas.tsx",
-      "sizeBytes": 72928,
-      "sha256": "eef8b12aa1c9bd69e3f4cb4fc8fcab1d319ce54427a469a9a50f6820ac8bdbe1"
+      "sizeBytes": 72954,
+      "sha256": "0230b2af3de38cd7d979eca4139956962a7359b806cc331fc0284bdf534c6901"
     },
     {
       "path": "apps/studio/src/ColorPicker.tsx",
@@ -1337,8 +1337,8 @@
     },
     {
       "path": "tests/e2e/studio.spec.ts",
-      "sizeBytes": 375782,
-      "sha256": "fef5ca737d59b38a61586e2177bc025d0129a8a5daf4bd2d3f6f07b1d94da931"
+      "sizeBytes": 375742,
+      "sha256": "3c3962058be004640083faff742e9217d05120c8729dc62895729e8cc3eeba1a"
     },
     {
       "path": "tests/fixtures/performance.ts",
