@@ -32,6 +32,7 @@ const requiredContracts = [
   "ref: ${{ inputs.source_commit }}",
   'test "${SOURCE_COMMIT}" = "${DISPATCH_SHA}"',
   'test "${CONFIRMATION}" = "PUBLISH ADR v${VERSION}"',
+  'git tag --list "v${VERSION}"',
   "git ls-remote --tags https://github.com/dlobrands/AgenticDesignRuntime.git",
   "needs: [authorize, quality, macos-release]",
   "environment: public-production",

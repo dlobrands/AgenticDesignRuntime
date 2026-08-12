@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "86d0e07002d62ece958389920e9d5a8c0a0410d6",
-  "sourceCommittedAt": "2026-08-12T00:16:57-04:00",
+  "sourceCommit": "cf8a75575c3c1091bba4a3e6ae617cf7c95f34bd",
+  "sourceCommittedAt": "2026-08-12T00:50:48-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -667,8 +667,8 @@
     },
     {
       "path": "docs/PUBLIC_RELEASES.md",
-      "sizeBytes": 1994,
-      "sha256": "9fe21c2b7e2cb1420c4c6666e40c6131242c4b890328f2f320b5e97eb9c95cf1"
+      "sizeBytes": 2023,
+      "sha256": "a6b86fb6befa8b748e57d69938f0d56da2319b9309512ae9adbd091a57d3fc08"
     },
     {
       "path": "docs/PUBLIC_SCHEMA_STUDIO_PARITY.md",
@@ -1327,8 +1327,8 @@
     },
     {
       "path": "scripts/validate-promotion-workflow.mjs",
-      "sizeBytes": 1781,
-      "sha256": "09fae1c64eaabd4598156412adfd7afbb777b0e5499bdc2786cc5cda81e9e697"
+      "sizeBytes": 1815,
+      "sha256": "bd90dc05ebf56b94b05fc530e1158e3271683c162d2bc6a99fa2f75e89d1be0a"
     },
     {
       "path": "scripts/verify-packed-release.mjs",
