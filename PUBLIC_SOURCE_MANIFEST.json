@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "dccfd43fb61ac895be19e5fc025873cd306f0c1c",
-  "sourceCommittedAt": "2026-08-12T02:36:43-04:00",
+  "sourceCommit": "2ad40508cb8d3bb375f16fcf81190fd10b77e07d",
+  "sourceCommittedAt": "2026-08-12T02:53:37-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -427,8 +427,8 @@
     },
     {
       "path": "apps/studio/src/render-worker.ts",
-      "sizeBytes": 5561,
-      "sha256": "aad74015f14c02ecd2a9ede7fa24cd8f3be363dc523ec1e115f1b208232c2a6c"
+      "sizeBytes": 5624,
+      "sha256": "d290a8456827804c7c9e21049eeb6a6492924f3c9778184e756d1d4e7734efbc"
     },
     {
       "path": "apps/studio/src/runtime-sync.ts",
@@ -1177,8 +1177,8 @@
     },
     {
       "path": "packages/renderer-pixi/src/renderer.ts",
-      "sizeBytes": 55214,
-      "sha256": "2f6d7cb9f36daba7c80e7f1488c8998e68e7a021a3dedc8bf5f46f4eb5840b5e"
+      "sizeBytes": 56101,
+      "sha256": "8fc622ec020c37e4ad4864f009ed3a666164e1f2c78a6b8ef2af807210d84b70"
     },
     {
       "path": "packages/renderer-pixi/src/rich-text-layout.ts",

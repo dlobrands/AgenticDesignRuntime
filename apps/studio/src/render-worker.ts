@@ -127,12 +127,16 @@ const agenticRender = async ({
     activeRenderers += 1;
     rendererCounted = true;
     maxActiveRenderers = Math.max(maxActiveRenderers, activeRenderers);
-    await frameRenderer.setFrame(frame, {
-      assetUrl: (assetId) =>
-        `/api/projects/${projectId}/assets/${assetId}/content`,
-      asset: (assetId) => assets.assets.find((asset) => asset.id === assetId),
-      fontFamily: (fontId) => `ADR_${fontId.replaceAll("-", "_")}`,
-    });
+    await frameRenderer.setFrame(
+      frame,
+      {
+        assetUrl: (assetId) =>
+          `/api/projects/${projectId}/assets/${assetId}/content`,
+        asset: (assetId) => assets.assets.find((asset) => asset.id === assetId),
+        fontFamily: (fontId) => `ADR_${fontId.replaceAll("-", "_")}`,
+      },
+      { deferFinalRender: true },
+    );
     const warnings: RenderWarning[] = [];
     for (const node of listNodes(frame)) {
       if (

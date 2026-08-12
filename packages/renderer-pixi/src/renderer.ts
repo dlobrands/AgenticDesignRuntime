@@ -56,12 +56,24 @@ export type RendererResources = {
   fontFamily?: (fontId: string) => string;
 };
 
+export type RendererSetFrameOptions = {
+  deferFinalRender?: boolean;
+};
+
 const assetFormat = (asset: Asset): string =>
   asset.mimeType === "image/jpeg"
     ? "jpg"
     : asset.mimeType === "image/svg+xml"
       ? "svg"
       : asset.mimeType.split("/")[1]!;
+
+const hasEnabledEffectsInTree = (nodes: readonly SceneNode[]): boolean =>
+  nodes.some((node) => {
+    if ("effects" in node && hasEnabledEffects(node.effects)) return true;
+    if (node.type === "mask")
+      return hasEnabledEffectsInTree([node.maskSource, ...node.children]);
+    return node.type === "group" && hasEnabledEffectsInTree(node.children);
+  });
 
 type RenderRecord = {
   node: SceneNode;
@@ -326,6 +338,7 @@ export class DesignRenderer {
   async setFrame(
     frame: FrameDocument,
     resources: RendererResources,
+    options: RendererSetFrameOptions = {},
   ): Promise<void> {
     if (!this.#initialized)
       throw new Error("Initialize the renderer before loading a frame.");
@@ -493,14 +506,26 @@ export class DesignRenderer {
     // already the canonical export clip. A self-child Pixi mask here would
     // recursively mask the artboard and can make the entire scene transparent.
     this.stage.addChild(artboard);
-    const firstRenderStarted = performance.now();
-    this.renderer.render({ container: this.stage });
-    let renderDurationMs = performance.now() - firstRenderStarted;
-    this.#applyEffects(renderFrame.root.children);
-    this.#applyAdjustments(renderFrame.root.children);
-    const secondRenderStarted = performance.now();
-    this.renderer.render({ container: this.stage });
-    renderDurationMs += performance.now() - secondRenderStarted;
+    const requiresPostProcessing =
+      hasEnabledEffectsInTree(renderFrame.root.children) ||
+      renderFrame.root.children.some(
+        (node) => node.type === "adjustment" && node.enabled,
+      );
+    let renderDurationMs = 0;
+    if (!options.deferFinalRender || requiresPostProcessing) {
+      const firstRenderStarted = performance.now();
+      this.renderer.render({ container: this.stage });
+      renderDurationMs = performance.now() - firstRenderStarted;
+    }
+    if (requiresPostProcessing) {
+      this.#applyEffects(renderFrame.root.children);
+      this.#applyAdjustments(renderFrame.root.children);
+      if (!options.deferFinalRender) {
+        const secondRenderStarted = performance.now();
+        this.renderer.render({ container: this.stage });
+        renderDurationMs += performance.now() - secondRenderStarted;
+      }
+    }
     this.#lastReconciliation = {
       mode: "full",
       reason: plan.dirty.includes("hierarchy") ? "hierarchy" : plan.reason,
