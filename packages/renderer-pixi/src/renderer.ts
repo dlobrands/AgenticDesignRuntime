@@ -635,10 +635,11 @@ export class DesignRenderer {
   }
 
   async toPngBlob(resolution = 1): Promise<Blob> {
-    this.render();
     if (!this.#frame) throw new Error("Renderer has no frame to export.");
     if (!Number.isFinite(resolution) || resolution < 0.25 || resolution > 4)
       throw new Error("Export resolution must be between 0.25× and 4×.");
+    // Pixi extraction renders the target container into its own canvas. An
+    // explicit render here would draw the entire scene twice for every export.
     const canvas = this.renderer.extract.canvas({
       target: this.stage,
       frame: new Rectangle(
