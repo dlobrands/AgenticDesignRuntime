@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "c870b536c34c1d071cc6ecc6ecd0ec5ea4d7af23",
-  "sourceCommittedAt": "2026-08-12T06:14:20-04:00",
+  "sourceCommit": "9a1b21f3c821567523660e3f6951e31e85f8fac9",
+  "sourceCommittedAt": "2026-08-12T06:20:06-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -667,8 +667,8 @@
     },
     {
       "path": "docs/PUBLIC_RELEASES.md",
-      "sizeBytes": 3265,
-      "sha256": "6707359452e6260d1e61cf8eca682052ac008c2776e6b912ae8c83b9e5e72d17"
+      "sizeBytes": 3476,
+      "sha256": "8a2952eea2d9d233113b4c0f965bae223179d21a89006dedfdb6bf716d4c4b96"
     },
     {
       "path": "docs/PUBLIC_SCHEMA_STUDIO_PARITY.md",

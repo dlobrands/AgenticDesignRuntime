@@ -49,11 +49,16 @@ Each package uses the same trusted-publisher identity: GitHub owner
 `publish-npm.yml`, environment `public-production`, and allowed action
 `npm publish`. The private promotion workflow alone may create the exact public
 source tag and dispatch this public workflow. npm exposes this
-package-level setting only after the package exists, so the first version must
-be published with a narrowly scoped, short-lived bootstrap credential or an
-interactive owner-authenticated publish. Configure and verify OIDC for all five
-packages immediately afterward, then revoke the bootstrap credential. Do not
-store an npm token in source or retain it as the normal release path.
+package-level setting only after the package exists, so the first version was
+published through interactive owner authentication and 2FA. OIDC was then
+configured for all five packages. No npm token is stored in source or retained
+as the normal release path.
+
+Version `1.0.1` is the one-time interactive 2FA bootstrap and therefore does
+not carry OIDC provenance. All five packages now trust the public workflow for
+future `npm publish` actions. The `public-production` environment accepts only
+stable tag refs matching `v*.*.*`; ordinary branches cannot acquire its OIDC
+publishing identity.
 
 The public workflow identity must match each package's public
 `repository.url`. Binding npm to the private development repository would make
