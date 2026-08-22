@@ -7,6 +7,7 @@ import {
   type StudioCommandInvocation,
 } from "./commands";
 import { InspectorPanel } from "./Inspector";
+import { Icon } from "./Icon";
 import { LayersPanel } from "./Layers";
 import { ModalDialog } from "./ModalDialog";
 import { ProjectRail } from "./ProjectRail";
@@ -79,7 +80,7 @@ function Toolbar({
           title="Select tool (V)"
           onClick={() => run({ id: "tool.select" })}
         >
-          <span aria-hidden="true">↖</span>
+          <Icon name="mouse-pointer" />
           <span className="sr-only">Select tool</span>
         </button>
         <button
@@ -89,17 +90,17 @@ function Toolbar({
           title={fonts.length ? "Text tool (T)" : "Import a font to use Text"}
           onClick={() => run({ id: "tool.text" })}
         >
-          <span aria-hidden="true">T</span>
+          <Icon name="text" />
           <span className="sr-only">Text tool</span>
         </button>
       </div>
       <div className="tool-cluster" role="group" aria-label="History">
         <button title="Undo (⌘Z)" onClick={() => run({ id: "history.undo" })}>
-          <span aria-hidden="true">↶</span>
+          <Icon name="undo" />
           <span className="sr-only">Undo</span>
         </button>
         <button title="Redo (⇧⌘Z)" onClick={() => run({ id: "history.redo" })}>
-          <span aria-hidden="true">↷</span>
+          <Icon name="redo" />
           <span className="sr-only">Redo</span>
         </button>
       </div>
@@ -109,7 +110,7 @@ function Toolbar({
           title="Rectangle"
           onClick={() => run({ id: "layer.create-rectangle" })}
         >
-          <span aria-hidden="true">▭</span>
+          <Icon name="rectangle" />
           <span className="sr-only">Add rectangle</span>
         </button>
         <button
@@ -117,7 +118,7 @@ function Toolbar({
           title="Ellipse"
           onClick={() => run({ id: "layer.create-ellipse" })}
         >
-          <span aria-hidden="true">○</span>
+          <Icon name="ellipse" />
           <span className="sr-only">Add ellipse</span>
         </button>
         <button
@@ -125,7 +126,7 @@ function Toolbar({
           title="Editable vector path"
           onClick={() => run({ id: "layer.create-vector" })}
         >
-          <span aria-hidden="true">P</span>
+          <Icon name="pen" />
           <span className="sr-only">Add vector path</span>
         </button>
         <button
@@ -138,7 +139,7 @@ function Toolbar({
           }
           onClick={() => run({ id: "layer.create-text" })}
         >
-          <span aria-hidden="true">T</span>
+          <Icon name="text" />
           <span className="sr-only">Add text</span>
         </button>
         <button
@@ -146,7 +147,7 @@ function Toolbar({
           title="Image layer"
           onClick={() => run({ id: "layer.create-image" })}
         >
-          <span aria-hidden="true">▧</span>
+          <Icon name="image" />
           <span className="sr-only">Add image</span>
         </button>
       </div>
@@ -157,10 +158,12 @@ function Toolbar({
             title="Duplicate"
             onClick={() => run({ id: "selection.duplicate" })}
           >
-            ⧉<span className="sr-only">Duplicate layer</span>
+            <Icon name="copy" />
+            <span className="sr-only">Duplicate layer</span>
           </button>
           <button title="Group" onClick={() => run({ id: "selection.group" })}>
-            ⌗<span className="sr-only">Group selected layers</span>
+            <Icon name="group" />
+            <span className="sr-only">Group selected layers</span>
           </button>
           <button title="Mask" onClick={() => run({ id: "selection.mask" })}>
             ◩<span className="sr-only">Mask selected layers</span>
@@ -328,6 +331,9 @@ function Toolbar({
 function Feedback() {
   const error = useStudio((state) => state.error);
   const warning = useStudio((state) => state.warning);
+  const deletionUndo = useStudio((state) => state.deletionUndo);
+  const undoDeletion = useStudio((state) => state.undoDeletion);
+  const dismissDeletionUndo = useStudio((state) => state.dismissDeletionUndo);
   const conflict = useStudio((state) => state.conflict);
   const externalConflict = useStudio((state) => state.externalConflict);
   const clear = useStudio((state) => state.clearError);
@@ -367,6 +373,18 @@ function Feedback() {
             </button>
           )}
           <button aria-label="Dismiss message" onClick={clear}>
+            ×
+          </button>
+        </div>
+      )}
+      {deletionUndo && (
+        <div className="feedback-toast deletion-undo" role="status">
+          <span>{deletionUndo.message}</span>
+          <button onClick={() => void undoDeletion()}>Undo</button>
+          <button
+            aria-label="Dismiss deletion message"
+            onClick={dismissDeletionUndo}
+          >
             ×
           </button>
         </div>

@@ -20,6 +20,7 @@ export type StudioCommandInvocation =
   | { id: "selection.clear" }
   | { id: "selection.delete" }
   | { id: "selection.duplicate" }
+  | { id: "selection.reorder"; delta: number }
   | { id: "selection.group" }
   | { id: "selection.mask" }
   | { id: "selection.edit-text"; nodeId?: string }
@@ -83,6 +84,11 @@ export const studioCommandRegistry: readonly StudioCommandDefinition[] = [
     label: "Duplicate selection",
     description:
       "Duplicate one selected layer with stable descendant remapping.",
+  },
+  {
+    id: "selection.reorder",
+    label: "Change selection stacking order",
+    description: "Move one selected layer forward or backward in its parent.",
   },
   {
     id: "selection.group",
@@ -240,6 +246,12 @@ export const isStudioCommandEnabled = (
       return Boolean(frame && state.selection.length);
     case "selection.duplicate":
       return Boolean(frame && state.selection.length === 1);
+    case "selection.reorder":
+      return Boolean(
+        frame &&
+        state.selection.length === 1 &&
+        findNodeLocation(frame, state.selection[0]!)?.locationKind === "child",
+      );
     case "selection.edit-text": {
       if (!frame) return false;
       const nodeId = invocation.nodeId ?? state.selection[0];
@@ -358,6 +370,21 @@ export const executeStudioCommand = (
           nodeId: node.id,
           idMap,
           offset: { x: 24, y: 24 },
+        },
+      ]);
+      return;
+    }
+    case "selection.reorder": {
+      if (!frame) return;
+      const nodeId = state.selection[0];
+      if (!nodeId) return;
+      const location = findNodeLocation(frame, nodeId);
+      if (!location || location.locationKind !== "child") return;
+      void state.commit([
+        {
+          kind: "reorderNode",
+          nodeId,
+          index: Math.max(0, location.index + invocation.delta),
         },
       ]);
       return;

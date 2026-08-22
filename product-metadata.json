@@ -1,7 +1,8 @@
 {
   "schemaVersion": 1,
-  "productVersion": "1.0.1",
+  "productVersion": "1.0.2",
   "pluginVersion": "0.0.1",
+  "designIntelligenceVersion": "1.0.0",
   "runtimeApiVersion": 1,
   "workspaceSchemaVersion": 1,
   "referenceVersions": {

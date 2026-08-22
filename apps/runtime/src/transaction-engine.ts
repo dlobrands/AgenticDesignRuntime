@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { stat } from "node:fs/promises";
+import { rename, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   AssetManifestSchema,
@@ -30,6 +30,7 @@ import {
   type TransactionRequest,
   type TextNode,
   type ValidationContext,
+  type WorkspaceOperation,
 } from "@tva-agentic-design/core";
 import type { RuntimeEventBus } from "./events.js";
 import { ensureDirectory } from "./fs-safe.js";
@@ -42,6 +43,7 @@ import {
 import { KeyedQueue } from "./queue.js";
 import type { ProjectState, WorkspaceState } from "./types.js";
 import {
+  loadProjectState,
   requireFrame,
   requireProject,
   resolveRegisteredFile,
@@ -62,6 +64,14 @@ export const transactionMutationDomain = (
   scope: TransactionRequest["scope"],
 ): string =>
   scope.kind === "workspace" ? "workspace" : `project:${scope.projectId}`;
+
+const workspaceMutationDomain = (request: TransactionRequest): string => {
+  const operation = request.operations[0];
+  return request.scope.kind === "workspace" &&
+    (operation?.kind === "trashProject" || operation?.kind === "restoreProject")
+    ? `project:${operation.projectId}`
+    : transactionMutationDomain(request.scope);
+};
 
 const projectStateHash = (
   project: Pick<ProjectState, "document" | "assets" | "fonts"> & {
@@ -216,9 +226,8 @@ export class TransactionEngine {
         );
       let result: TransactionCommitResult | TransactionPreviewResult;
       if (request.scope.kind === "workspace") {
-        result = await this.#queues.run(
-          transactionMutationDomain(request.scope),
-          () => this.#executeWorkspace(request),
+        result = await this.#queues.run(workspaceMutationDomain(request), () =>
+          this.#executeWorkspace(request),
         );
       } else {
         const projectId = request.scope.projectId;
@@ -396,16 +405,137 @@ export class TransactionEngine {
   async #executeWorkspace(
     request: TransactionRequest,
   ): Promise<TransactionCommitResult | TransactionPreviewResult> {
-    if (
-      request.operations.length !== 1 ||
-      request.operations[0]?.kind !== "createProject"
-    ) {
+    if (request.operations.length !== 1) {
       throw new RuntimeError(
         "INVALID_OPERATION",
-        "Workspace transactions support exactly one createProject operation.",
+        "Workspace transactions support exactly one operation.",
       );
     }
-    const operation = request.operations[0];
+    const operation = request.operations[0] as WorkspaceOperation;
+    if (
+      operation.kind === "trashProject" ||
+      operation.kind === "restoreProject"
+    ) {
+      const trashRoot = path.join(
+        this.workspace.root,
+        ".design-runtime",
+        "trash",
+        "projects",
+      );
+      await ensureDirectory(trashRoot);
+      let project: ProjectState;
+      let source: string;
+      let destination: string;
+      let label: string;
+      if (operation.kind === "trashProject") {
+        project = requireProject(this.workspace, operation.projectId);
+        source = project.directory;
+        destination = path.join(trashRoot, operation.projectId);
+        label = `Moved project “${project.document.name}” to Trash`;
+        if (
+          await stat(destination)
+            .then(() => true)
+            .catch(() => false)
+        )
+          throw new RuntimeError(
+            "INVALID_OPERATION",
+            "A trashed project with this ID already exists.",
+            { projectId: operation.projectId },
+            409,
+          );
+      } else {
+        if (this.workspace.projects.has(operation.projectId))
+          throw new RuntimeError(
+            "INVALID_OPERATION",
+            "The project is already active.",
+            { projectId: operation.projectId },
+            409,
+          );
+        source = path.join(trashRoot, operation.projectId);
+        project = await loadProjectState(source).catch(() => {
+          throw new RuntimeError(
+            "PROJECT_FILE_INVALID",
+            "The trashed project could not be found or opened.",
+            { projectId: operation.projectId },
+            404,
+          );
+        });
+        destination = path.join(
+          this.workspace.root,
+          "projects",
+          project.document.slug,
+        );
+        label = `Restored project “${project.document.name}”`;
+        if (
+          await stat(destination)
+            .then(() => true)
+            .catch(() => false)
+        )
+          throw new RuntimeError(
+            "INVALID_OPERATION",
+            `Project slug ${project.document.slug} is already reserved; the trashed project was preserved.`,
+            { projectId: operation.projectId, slug: project.document.slug },
+            409,
+          );
+      }
+      const transactionId = randomUUID();
+      const afterHash =
+        operation.kind === "trashProject"
+          ? await sha256("null")
+          : await projectStateHash(project);
+      if (request.mode === "preview")
+        return this.#storePreview(
+          request,
+          await this.#operationHash(request),
+          project.document.id,
+          undefined,
+          project.document.revision,
+          structuredDiff(
+            operation.kind === "trashProject" ? project.document : null,
+            operation.kind === "trashProject" ? null : project.document,
+          ),
+          [],
+        );
+      await ensureDirectory(path.dirname(destination));
+      await rename(source, destination);
+      if (operation.kind === "trashProject") {
+        this.workspace.projects.delete(project.document.id);
+      } else {
+        try {
+          const restored = await loadProjectState(destination);
+          this.workspace.projects.set(restored.document.id, restored);
+          project = restored;
+        } catch (error) {
+          await rename(destination, source).catch(() => undefined);
+          throw error;
+        }
+      }
+      await this.metrics.update({
+        commitCount: this.metrics.state.commitCount + 1,
+      });
+      const result: TransactionCommitResult = {
+        transactionId,
+        projectId: project.document.id,
+        previousRevision: project.document.revision,
+        revision: project.document.revision,
+        status: "committed",
+        actor: request.actor,
+        ...(request.actor.sessionId
+          ? { originSessionId: request.actor.sessionId }
+          : {}),
+        affectedNodes: [],
+        warnings: [],
+        historyEntryId: transactionId,
+        stateHash: afterHash,
+      };
+      this.events.emit("transaction.committed", { ...result, label });
+      return result;
+    }
+    if (operation.kind !== "createProject")
+      throw new RuntimeError(
+        "INVALID_OPERATION",
+        "Unsupported workspace operation.",
+      );
     if (this.workspace.projects.has(operation.projectId))
       throw new RuntimeError("INVALID_OPERATION", "Project ID already exists.");
     const now = new Date().toISOString();

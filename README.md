@@ -2,14 +2,14 @@
 
 A local, agent-native visual design runtime for creating and revising editable layered graphics through one canonical transaction engine. Designers use the production Studio, agents use MCP or the typed HTTP client, and every accepted mutation becomes one revision with a stable semantic hash.
 
-This repository ships V1 as `1.0.1`; distribution labels are not part of the product architecture.
+This repository ships V1 as `1.0.2`; distribution labels are not part of the product architecture.
 
 The public repository is a source-visible proprietary production mirror. The
 license permits personal, non-commercial evaluation; it is not an open-source
 license. See [Public production releases](./docs/PUBLIC_RELEASES.md),
 [support](./SUPPORT.md), and [security reporting](./SECURITY.md).
 
-Public scene and intent contracts include [optional rich-text spans](./docs/RICH_TEXT_SPANS.md), [bounded native vector paths](./docs/VECTOR_PATHS.md), [ordered non-destructive effect stacks](./docs/EFFECT_STACKS.md), [professional non-destructive crop mode](./docs/PROFESSIONAL_CROP_MODE.md), [persistent layout aids with ephemeral snapping](./docs/LAYOUT_AIDS.md), [marketing frame presets with constrained resizing](./docs/FRAME_PRESETS_AND_RESIZING.md), [professional raster export](./docs/EXPORT_CONTRACT.md), [canonical project templates with semantic slots](./docs/PROJECT_TEMPLATES.md), [bounded non-executable DesignBriefs](./docs/DESIGN_BRIEFS.md), [canonical non-executable DesignPlans](./docs/DESIGN_PLANS.md), the [reviewed DesignPlan intent compiler](./docs/INTENT_COMPILER.md), [read-only deterministic visual QA](./docs/VISUAL_QA.md), [preview-first semantic role tools](./docs/SEMANTIC_ROLE_TOOLS.md), [deterministic DesignPlan layout/reflow](./docs/DESIGN_LAYOUT_SYSTEM.md), [Plan-declared role asset replacement](./docs/ROLE_ASSET_REPLACEMENT.md), [exact pinned-Brand binding](./docs/PLAN_BRAND_BINDINGS.md), [deterministic same-format DesignPlan variants](./docs/DESIGN_VARIANTS.md), [ephemeral canonical proposal review](./docs/PROPOSAL_REVIEW_TOOLS.md), and [live exact-pin palette, typography, effect-style, radius, safe-area spacing, and palette variable-mode bindings](./docs/LIVE_BRAND_BINDINGS.md).
+Public scene and intent contracts include [optional rich-text spans](./docs/RICH_TEXT_SPANS.md), [bounded native vector paths](./docs/VECTOR_PATHS.md), [ordered non-destructive effect stacks](./docs/EFFECT_STACKS.md), [professional non-destructive crop mode](./docs/PROFESSIONAL_CROP_MODE.md), [persistent layout aids with ephemeral snapping](./docs/LAYOUT_AIDS.md), [marketing frame presets with constrained resizing](./docs/FRAME_PRESETS_AND_RESIZING.md), [professional raster export](./docs/EXPORT_CONTRACT.md), [canonical project templates with semantic slots](./docs/PROJECT_TEMPLATES.md), [bounded non-executable DesignBriefs](./docs/DESIGN_BRIEFS.md), [canonical non-executable DesignPlans](./docs/DESIGN_PLANS.md), the [reviewed DesignPlan intent compiler](./docs/INTENT_COMPILER.md), [read-only deterministic visual QA](./docs/VISUAL_QA.md), [preview-first semantic role tools](./docs/SEMANTIC_ROLE_TOOLS.md), [deterministic DesignPlan layout/reflow](./docs/DESIGN_LAYOUT_SYSTEM.md), [Plan-declared role asset replacement](./docs/ROLE_ASSET_REPLACEMENT.md), [exact pinned-Brand binding](./docs/PLAN_BRAND_BINDINGS.md), [deterministic same-format DesignPlan variants](./docs/DESIGN_VARIANTS.md), [ephemeral canonical proposal review](./docs/PROPOSAL_REVIEW_TOOLS.md), [live exact-pin palette, typography, effect-style, radius, safe-area spacing, and palette variable-mode bindings](./docs/LIVE_BRAND_BINDINGS.md), and the plugin's [versioned design-intelligence curriculum](./docs/DESIGN_INTELLIGENCE.md).
 
 ## Architecture
 
@@ -101,7 +101,7 @@ matching npm packages after verifying the release version:
 node install-macos-release.mjs --release /path/to/extracted-release --target "$HOME/.agentic-design-runtime/current"
 node doctor-macos.mjs --target "$HOME/.agentic-design-runtime/current"
 
-pnpm add -g @tva-agentic-design/runtime@1.0.1 @tva-agentic-design/mcp@1.0.1
+pnpm add -g @tva-agentic-design/runtime@1.0.2 @tva-agentic-design/mcp@1.0.2
 pnpm exec playwright install chromium
 ```
 
@@ -126,11 +126,12 @@ pnpm plugin:install:personal
 
 Start a new Codex task in any client repository and invoke `$agentic-design` with the design brief. The agent will:
 
-1. Install the plugin-pinned `1.0.1` runtime and Chromium when absent.
+1. Install the plugin-pinned `1.0.2` runtime and Chromium when absent.
 2. Create or reconnect the visible `<client-root>/design-runtime` workspace.
-3. Build through typed preview and commit operations, return PNG drafts in the task, and open the local authenticated Studio after the first draft.
-4. Accept human Studio edits as new canonical revisions.
-5. Validate and export the approved design, return the final PNG, then stop the runtime.
+3. Load the bundled design-intelligence core and only the task-specific references needed for briefing, hierarchy, composition, image placement, typography, color, Brand, format, or critique.
+4. Build through typed preview and commit operations, compare structural previews when the assignment warrants exploration, return PNG drafts in the task, and open the local authenticated Studio after the first draft.
+5. Accept human Studio edits as new canonical revisions.
+6. Validate and export the approved design, return the final image, then stop the runtime.
 
 Studio remains loopback-only. The plugin never creates a public URL, edits canonical workspace JSON directly, selects whichever runtime started most recently, or exposes capability tokens and browser nonces.
 
@@ -175,7 +176,7 @@ pnpm verify:packed
 cd release && shasum -a 256 -c SHA256SUMS
 ```
 
-The bundle contains the runtime and MCP packages, self-contained Codex plugin, `$agentic-design` skill, production Studio assets, IBM Plex interface fonts, compatibility metadata, checksums, installation doctor, recoverable installer/uninstaller, and a machine-readable release manifest.
+The bundle contains the runtime and MCP packages, self-contained Codex plugin, `$agentic-design` skill, versioned design-intelligence curriculum, production Studio assets, IBM Plex interface fonts, compatibility metadata, checksums, installation doctor, recoverable installer/uninstaller, and a machine-readable release manifest.
 
 ## Trusted updates
 

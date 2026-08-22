@@ -43,6 +43,12 @@ export const CreateProjectOperationSchema = z
     name: z.string().min(1),
   })
   .strict();
+export const TrashProjectOperationSchema = z
+  .object({ kind: z.literal("trashProject"), projectId: uuid })
+  .strict();
+export const RestoreProjectOperationSchema = z
+  .object({ kind: z.literal("restoreProject"), projectId: uuid })
+  .strict();
 export const RenameProjectOperationSchema = z
   .object({
     kind: z.literal("renameProject"),
@@ -538,7 +544,11 @@ export const RestoreRevisionOperationSchema = z
   })
   .strict();
 
-export const WorkspaceOperationSchema = CreateProjectOperationSchema;
+export const WorkspaceOperationSchema = z.union([
+  CreateProjectOperationSchema,
+  TrashProjectOperationSchema,
+  RestoreProjectOperationSchema,
+]);
 
 export const ProjectOperationSchema = z.union([
   RenameProjectOperationSchema,
@@ -595,7 +605,11 @@ export const SemanticOperationSchema = z.union([
   FrameOperationSchema,
 ]);
 
-export const WORKSPACE_OPERATION_KINDS = ["createProject"] as const;
+export const WORKSPACE_OPERATION_KINDS = [
+  "createProject",
+  "trashProject",
+  "restoreProject",
+] as const;
 export const PROJECT_OPERATION_KINDS = [
   "renameProject",
   "setExportPreset",

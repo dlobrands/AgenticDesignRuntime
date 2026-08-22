@@ -157,7 +157,9 @@ const initializeIfEmpty = async (root: string): Promise<void> => {
   await writeJsonAtomic(configPath, DEFAULT_CONFIG(randomUUID()));
 };
 
-const loadProject = async (directory: string): Promise<ProjectState> => {
+export const loadProjectState = async (
+  directory: string,
+): Promise<ProjectState> => {
   const document = ProjectDocumentSchema.parse(
     await readJson(path.join(directory, "project.json")),
   );
@@ -391,7 +393,9 @@ export const openWorkspace = async (
     await ensureDirectory(projectsRoot);
     for (const entry of await readdir(projectsRoot, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-      const project = await loadProject(path.join(projectsRoot, entry.name));
+      const project = await loadProjectState(
+        path.join(projectsRoot, entry.name),
+      );
       projects.set(project.document.id, project);
     }
 

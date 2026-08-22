@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "entryPoint": "skills/agentic-design/references/design-intelligence/core-judgment.md",
+  "scope": {
+    "supportedOutputs": ["png", "jpeg", "webp"],
+    "runtimeAuthority": "Agentic Design Runtime canonical transactions",
+    "excludes": [
+      "automatic model training or weight updates",
+      "PDF/X or CMYK production certification",
+      "responsive interface implementation",
+      "self-scored release approval"
+    ]
+  },
+  "modules": [
+    {
+      "id": "core-judgment",
+      "path": "skills/agentic-design/references/design-intelligence/core-judgment.md",
+      "loadWhen": "Before a new design or substantial redesign"
+    },
+    {
+      "id": "brief-hierarchy",
+      "path": "skills/agentic-design/references/design-intelligence/brief-hierarchy.md",
+      "loadWhen": "When translating a request into canonical intent and content priority"
+    },
+    {
+      "id": "composition-layout",
+      "path": "skills/agentic-design/references/design-intelligence/composition-layout.md",
+      "loadWhen": "When choosing or repairing spatial structure"
+    },
+    {
+      "id": "text-on-imagery",
+      "path": "skills/agentic-design/references/design-intelligence/text-on-imagery.md",
+      "loadWhen": "When text and raster or vector imagery share a composition"
+    },
+    {
+      "id": "typography-color",
+      "path": "skills/agentic-design/references/design-intelligence/typography-color.md",
+      "loadWhen": "When defining or reviewing typography, palette, contrast, or accessibility"
+    },
+    {
+      "id": "imagery-brand",
+      "path": "skills/agentic-design/references/design-intelligence/imagery-brand.md",
+      "loadWhen": "When selecting imagery, graphics, Brand Kits, or campaign grammar"
+    },
+    {
+      "id": "formats",
+      "path": "skills/agentic-design/references/design-intelligence/formats.md",
+      "loadWhen": "When output context, platform, print use, or aspect-ratio adaptation matters"
+    },
+    {
+      "id": "patterns-antipatterns",
+      "path": "skills/agentic-design/references/design-intelligence/patterns-antipatterns.md",
+      "loadWhen": "When exploring structural directions or diagnosing generic design behavior"
+    },
+    {
+      "id": "critique",
+      "path": "skills/agentic-design/references/design-intelligence/critique.md",
+      "loadWhen": "Before final delivery and during any requested visual review"
+    },
+    {
+      "id": "contrastive-examples",
+      "path": "skills/agentic-design/references/design-intelligence/contrastive-examples.md",
+      "loadWhen": "When a concrete weak-versus-strong comparison would improve a design decision"
+    },
+    {
+      "id": "training",
+      "path": "skills/agentic-design/references/design-intelligence/training.md",
+      "loadWhen": "When evaluating or deliberately improving agent design behavior"
+    },
+    {
+      "id": "research-basis",
+      "path": "skills/agentic-design/references/design-intelligence/research-basis.md",
+      "loadWhen": "When maintaining or auditing the curriculum's evidence base"
+    }
+  ]
+}

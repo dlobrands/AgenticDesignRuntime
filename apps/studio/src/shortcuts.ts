@@ -58,6 +58,22 @@ export const studioShortcutRegistry: readonly StudioShortcut[] = [
     command: () => ({ id: "selection.duplicate" }),
   },
   {
+    id: "bring-forward",
+    label: "Bring selection forward",
+    keys: "Mod+]",
+    when: "canvas",
+    matches: (event) => primary(event) && !event.shiftKey && event.key === "]",
+    command: () => ({ id: "selection.reorder", delta: 1 }),
+  },
+  {
+    id: "send-backward",
+    label: "Send selection backward",
+    keys: "Mod+[",
+    when: "canvas",
+    matches: (event) => primary(event) && !event.shiftKey && event.key === "[",
+    command: () => ({ id: "selection.reorder", delta: -1 }),
+  },
+  {
     id: "group",
     label: "Group selection",
     keys: "Mod+G",

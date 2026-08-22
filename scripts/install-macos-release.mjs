@@ -50,6 +50,8 @@ if (manifest.platform !== "macOS Apple Silicon")
   throw new Error(
     "Release manifest is not the supported macOS arm64 platform.",
   );
+if (!/^\d+\.\d+\.\d+$/.test(manifest.renderer?.playwright ?? ""))
+  throw new Error("Release manifest is missing an exact Playwright version.");
 const files = await readdir(release);
 const runtime = files.find((name) =>
   /^tva-agentic-design-runtime-[0-9].*\.tgz$/.test(name),
@@ -70,7 +72,12 @@ try {
   );
   execFileSync(
     "pnpm",
-    ["add", path.join(release, runtime), path.join(release, mcp)],
+    [
+      "add",
+      path.join(release, runtime),
+      path.join(release, mcp),
+      `playwright@${manifest.renderer.playwright}`,
+    ],
     {
       cwd: staging,
       stdio: "inherit",

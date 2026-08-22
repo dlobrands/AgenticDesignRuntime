@@ -151,6 +151,8 @@ try {
     manifest.binaries?.length !== 3 ||
     !manifest.binaries.includes("agentic-design-mcp") ||
     manifest.agentIntegration?.pluginVersion !== expectedPluginVersion ||
+    manifest.agentIntegration?.designIntelligenceVersion !==
+      productMetadata.designIntelligenceVersion ||
     manifest.compatibility?.runtimeApiVersion !==
       productMetadata.runtimeApiVersion ||
     manifest.compatibility?.workspaceSchemaVersion !==
@@ -339,6 +341,18 @@ try {
   )
     throw new Error(
       "macOS installer did not report an exact successful install.",
+    );
+  const installedPlaywrightVersion = execFileSync(
+    path.join(installerTarget, "node_modules", ".bin", "playwright"),
+    ["--version"],
+    { cwd: temporary, encoding: "utf8" },
+  ).trim();
+  if (
+    installedPlaywrightVersion !==
+    `Version ${productMetadata.referenceVersions.playwright}`
+  )
+    throw new Error(
+      `macOS installer linked ${installedPlaywrightVersion || "no Playwright version"}.`,
     );
   const doctor = JSON.parse(
     execFileSync(

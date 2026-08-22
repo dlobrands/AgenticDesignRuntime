@@ -45,6 +45,8 @@ describe("Studio command and shortcut registries", () => {
       ["undo", keyboardEvent("z", { metaKey: true })],
       ["redo", keyboardEvent("z", { metaKey: true, shiftKey: true })],
       ["duplicate", keyboardEvent("d", { metaKey: true })],
+      ["bring-forward", keyboardEvent("]", { metaKey: true })],
+      ["send-backward", keyboardEvent("[", { metaKey: true })],
       ["group", keyboardEvent("g", { metaKey: true })],
       ["zoom-in", keyboardEvent("+", { metaKey: true })],
       ["zoom-out", keyboardEvent("-", { metaKey: true })],

@@ -1,6 +1,8 @@
 import { useId, useState } from "react";
 import type { FrameResizeStrategy } from "@tva-agentic-design/core";
+import { ContextMenu } from "./ContextMenu";
 import { MARKETING_FRAME_PRESETS } from "./frame-presets";
+import { Icon } from "./Icon";
 import { ModalDialog } from "./ModalDialog";
 import { useStudio } from "./store";
 
@@ -182,30 +184,105 @@ export function ProjectRail() {
   const activeFrame = useStudio((state) => state.activeFrame);
   const loadProject = useStudio((state) => state.loadProject);
   const loadFrame = useStudio((state) => state.loadFrame);
+  const renameProject = useStudio((state) => state.renameProject);
+  const trashProject = useStudio((state) => state.trashProject);
+  const renameFrame = useStudio((state) => state.renameFrame);
+  const deleteFrame = useStudio((state) => state.deleteFrame);
+  const duplicateFrame = useStudio((state) => state.duplicateFrame);
   const [dialog, setDialog] = useState<"project" | "frame" | "duplicate">();
+  const [menu, setMenu] = useState<
+    | { kind: "project"; x: number; y: number }
+    | { kind: "frame"; frameId: string; x: number; y: number }
+  >();
+  const [editing, setEditing] = useState<
+    { kind: "project" | "frame"; id: string; name: string } | undefined
+  >();
+  const commitEditing = () => {
+    if (!editing?.name.trim()) {
+      setEditing(undefined);
+      return;
+    }
+    if (editing.kind === "project") void renameProject(editing.name);
+    else void renameFrame(editing.id, editing.name);
+    setEditing(undefined);
+  };
+  const menuFrame =
+    menu?.kind === "frame"
+      ? frames.find((frame) => frame.id === menu.frameId)
+      : undefined;
   return (
     <section className="project-rail" aria-label="Projects and frames">
       <div className="rail-section">
         <div className="rail-heading">
           <span>Project</span>
           <button aria-label="New project" onClick={() => setDialog("project")}>
-            +
+            <Icon name="plus" />
           </button>
         </div>
-        <select
-          aria-label="Active project"
-          value={activeProject?.id ?? ""}
-          onChange={(event) => void loadProject(event.currentTarget.value)}
-        >
-          <option value="" disabled>
-            Choose project
-          </option>
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+        <div className="project-picker-row">
+          {editing?.kind === "project" ? (
+            <input
+              className="inline-name-input project-name-input"
+              aria-label="Rename project"
+              autoFocus
+              value={editing.name}
+              onChange={(event) =>
+                setEditing({ ...editing, name: event.currentTarget.value })
+              }
+              onBlur={commitEditing}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+                if (event.key === "Escape") setEditing(undefined);
+              }}
+            />
+          ) : (
+            <select
+              aria-label="Active project"
+              value={activeProject?.id ?? ""}
+              onChange={(event) => void loadProject(event.currentTarget.value)}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setMenu({
+                  kind: "project",
+                  x: event.clientX,
+                  y: event.clientY,
+                });
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "ContextMenu" ||
+                  (event.shiftKey && event.key === "F10")
+                ) {
+                  event.preventDefault();
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  setMenu({
+                    kind: "project",
+                    x: bounds.left + 24,
+                    y: bounds.bottom,
+                  });
+                }
+              }}
+            >
+              <option value="" disabled>
+                Choose project
+              </option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            className="icon-button danger-action"
+            aria-label="Move project to Trash"
+            title={`Move ${activeProject?.name ?? "project"} to Trash`}
+            disabled={!activeProject}
+            onClick={() => void trashProject()}
+          >
+            <Icon name="trash" />
+          </button>
+        </div>
       </div>
       <div className="rail-section frame-section">
         <div className="rail-heading">
@@ -215,38 +292,190 @@ export function ProjectRail() {
             disabled={!activeProject}
             onClick={() => setDialog("frame")}
           >
-            +
+            <Icon name="plus" />
           </button>
           <button
             aria-label="Duplicate and resize frame"
             disabled={!activeFrame}
             onClick={() => setDialog("duplicate")}
           >
-            ⧉
+            <Icon name="copy" />
           </button>
         </div>
         <div className="frame-list">
           {frames.map((frame, index) => (
-            <button
+            <div
               key={frame.id}
-              className={frame.id === activeFrame?.id ? "is-active" : ""}
-              aria-current={frame.id === activeFrame?.id ? "true" : undefined}
-              onClick={() => void loadFrame(frame.id)}
+              className={`frame-row${frame.id === activeFrame?.id ? " is-active" : ""}`}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                if (frame.id !== activeFrame?.id) void loadFrame(frame.id);
+                setMenu({
+                  kind: "frame",
+                  frameId: frame.id,
+                  x: event.clientX,
+                  y: event.clientY,
+                });
+              }}
             >
-              <span className="frame-index">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span>
-                <strong>{frame.name}</strong>
-                <small>
-                  {frame.canvas.width}×{frame.canvas.height}
-                </small>
-              </span>
-              <em>r{frame.revision}</em>
-            </button>
+              <button
+                className="frame-select"
+                aria-current={frame.id === activeFrame?.id ? "true" : undefined}
+                onClick={() => void loadFrame(frame.id)}
+                onDoubleClick={() =>
+                  setEditing({ kind: "frame", id: frame.id, name: frame.name })
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "F2") {
+                    event.preventDefault();
+                    setEditing({
+                      kind: "frame",
+                      id: frame.id,
+                      name: frame.name,
+                    });
+                  }
+                  if (
+                    event.key === "ContextMenu" ||
+                    (event.shiftKey && event.key === "F10")
+                  ) {
+                    event.preventDefault();
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    setMenu({
+                      kind: "frame",
+                      frameId: frame.id,
+                      x: bounds.left + 30,
+                      y: bounds.bottom,
+                    });
+                  }
+                }}
+              >
+                <span className="frame-index">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span>
+                  {editing?.kind === "frame" && editing.id === frame.id ? (
+                    <input
+                      className="inline-name-input"
+                      aria-label={`Rename ${frame.name}`}
+                      autoFocus
+                      value={editing.name}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={(event) =>
+                        setEditing({
+                          ...editing,
+                          name: event.currentTarget.value,
+                        })
+                      }
+                      onBlur={commitEditing}
+                      onKeyDown={(event) => {
+                        event.stopPropagation();
+                        if (event.key === "Enter") event.currentTarget.blur();
+                        if (event.key === "Escape") setEditing(undefined);
+                      }}
+                    />
+                  ) : (
+                    <strong>{frame.name}</strong>
+                  )}
+                  <small>
+                    {frame.canvas.width}×{frame.canvas.height}
+                  </small>
+                </span>
+                <em>r{frame.revision}</em>
+              </button>
+              <div className="frame-row-actions">
+                <button
+                  title={`Duplicate ${frame.name}`}
+                  aria-label="Duplicate frame"
+                  onClick={() =>
+                    void duplicateFrame(
+                      `${frame.name} copy`,
+                      frame.canvas.width,
+                      frame.canvas.height,
+                      "constraints",
+                      frame.id,
+                    )
+                  }
+                >
+                  <Icon name="copy" />
+                </button>
+                <button
+                  className="danger-action"
+                  title={`Delete ${frame.name}`}
+                  aria-label="Delete frame"
+                  onClick={() => void deleteFrame(frame.id)}
+                >
+                  <Icon name="trash" />
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       </div>
+      {menu?.kind === "project" && activeProject && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(undefined)}
+          items={[
+            {
+              label: "Rename Project",
+              icon: "rename",
+              movesFocus: true,
+              action: () =>
+                setEditing({
+                  kind: "project",
+                  id: activeProject.id,
+                  name: activeProject.name,
+                }),
+            },
+            {
+              label: "Move to Trash",
+              icon: "trash",
+              danger: true,
+              action: () => void trashProject(),
+            },
+          ]}
+        />
+      )}
+      {menu?.kind === "frame" && menuFrame && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(undefined)}
+          items={[
+            {
+              label: "Rename",
+              icon: "rename",
+              shortcut: "F2",
+              movesFocus: true,
+              action: () =>
+                setEditing({
+                  kind: "frame",
+                  id: menuFrame.id,
+                  name: menuFrame.name,
+                }),
+            },
+            {
+              label: "Duplicate",
+              icon: "copy",
+              action: () =>
+                void duplicateFrame(
+                  `${menuFrame.name} copy`,
+                  menuFrame.canvas.width,
+                  menuFrame.canvas.height,
+                  "constraints",
+                  menuFrame.id,
+                ),
+            },
+            {
+              label: "Delete",
+              icon: "trash",
+              danger: true,
+              action: () => void deleteFrame(menuFrame.id),
+            },
+          ]}
+        />
+      )}
       <CreateDialog kind={dialog} onClose={() => setDialog(undefined)} />
     </section>
   );

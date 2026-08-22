@@ -1,7 +1,7 @@
 {
   "name": "agentic-design-runtime",
   "version": "0.0.1",
-  "description": "Create and revise deterministic, editable layered graphics through the local Agentic Design Runtime.",
+  "description": "Create and revise deliberate, deterministic, editable layered graphics through the local Agentic Design Runtime.",
   "author": {
     "name": "David Logan"
   },
@@ -11,7 +11,7 @@
   "interface": {
     "displayName": "Agentic Design Runtime",
     "shortDescription": "Build editable graphics with local agents",
-    "longDescription": "Agentic Design Runtime gives Codex a complete local visual-design workflow: install and operate the pinned runtime, create or resume client workspaces, build graphics through typed transactions, render previews into chat, open Studio for human adjustments, and export approved PNG files.",
+    "longDescription": "Agentic Design Runtime gives Codex a complete local visual-design workflow and installed design-intelligence curriculum: translate briefs into hierarchy and structure, build through typed transactions, render and critique previews, collaborate in Studio, and export approved PNG, JPEG, or WebP files.",
     "developerName": "David Logan",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],

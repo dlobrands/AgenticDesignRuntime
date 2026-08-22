@@ -52,6 +52,22 @@ const pluginManifest = JSON.parse(
   ),
 );
 const pluginVersion = pluginManifest.version;
+const designIntelligenceManifestPath = path.join(
+  root,
+  "plugins",
+  "agentic-design-runtime",
+  "design-intelligence-manifest.json",
+);
+const designIntelligenceManifest = JSON.parse(
+  await readFile(designIntelligenceManifestPath, "utf8"),
+);
+if (
+  designIntelligenceManifest.version !==
+  productMetadata.designIntelligenceVersion
+)
+  throw new Error(
+    "Design-intelligence manifest version does not match product metadata.",
+  );
 const packagesFromRegistry = process.argv.includes("--packages-from-registry");
 await rm(release, { recursive: true, force: true });
 await mkdir(release, { recursive: true });
@@ -124,6 +140,10 @@ await writeFile(
       workspaceSchemaVersion: productMetadata.workspaceSchemaVersion,
       runtimeArtifact: runtimeArchiveName,
       runtimeSha256: await digest(runtimeArchive),
+      designIntelligenceVersion: productMetadata.designIntelligenceVersion,
+      designIntelligenceManifestSha256: await digest(
+        path.join(pluginStage, "design-intelligence-manifest.json"),
+      ),
     },
     null,
     2,
@@ -182,6 +202,10 @@ const manifest = {
     pluginVersion,
     skill: "$agentic-design",
     runtimeArtifact: runtimeArchiveName,
+    designIntelligenceVersion: productMetadata.designIntelligenceVersion,
+    designIntelligenceManifestSha256: await digest(
+      designIntelligenceManifestPath,
+    ),
   },
   trustedUpdates: {
     implementation: "check-fetch-apply-rollback",
@@ -199,6 +223,7 @@ const manifest = {
     "MCP stdio adapter",
     "Agentic Design Runtime Codex plugin",
     "$agentic-design entry skill",
+    `design intelligence curriculum ${productMetadata.designIntelligenceVersion}`,
   ],
   artifacts,
 };
@@ -207,7 +232,7 @@ await writeFile(
   `${JSON.stringify(manifest, null, 2)}\n`,
   { mode: 0o600 },
 );
-const install = `# Agentic Design Runtime ${version}\n\nRequires macOS Apple Silicon, macOS 14+, Node 24.18.0 (Node >=22 accepted), pnpm 10.34.5, and pinned Chromium.\n\n## Verified local installation\n\n\`\`\`bash\nnode install-macos-release.mjs --release . --target "$HOME/.agentic-design-runtime/current"\nnode doctor-macos.mjs --target "$HOME/.agentic-design-runtime/current"\n\`\`\`\n\nThe installer verifies every checksum before writing, stages an isolated exact-version install, validates all three binaries, and atomically replaces the target while retaining the previous install as a timestamped backup. Workspaces are never stored inside or deleted with the installation. Start with an existing empty directory: \`$HOME/.agentic-design-runtime/current/node_modules/.bin/design-runtime dev /absolute/workspace/path\`.\n\nTo uninstall recoverably, run \`node uninstall-macos-release.mjs --target "$HOME/.agentic-design-runtime/current"\`.\n\n## Trusted updates\n\nUpdate check/fetch/apply/rollback remains disabled until an approved official origin, release signing key, provenance builder identity, and channel policy are provisioned in the owner-only trust configuration. The included manifest and provenance files are non-active templates.\n\n## Codex agent plugin\n\nRun \`node install-personal-plugin.mjs\`, start a new Codex task, then invoke \`$agentic-design\`. The plugin installs its exact bundled runtime on first use.\n`;
+const install = `# Agentic Design Runtime ${version}\n\nRequires macOS Apple Silicon, macOS 14+, Node 24.18.0 (Node >=22 accepted), pnpm 10.34.5, and pinned Chromium.\n\n## Verified local installation\n\n\`\`\`bash\nnode install-macos-release.mjs --release . --target "$HOME/.agentic-design-runtime/current"\nnode doctor-macos.mjs --target "$HOME/.agentic-design-runtime/current"\n\`\`\`\n\nThe installer verifies every checksum before writing, stages an isolated exact-version install, validates all three binaries, and atomically replaces the target while retaining the previous install as a timestamped backup. Workspaces are never stored inside or deleted with the installation. Start with an existing empty directory: \`$HOME/.agentic-design-runtime/current/node_modules/.bin/design-runtime dev /absolute/workspace/path\`.\n\nTo uninstall recoverably, run \`node uninstall-macos-release.mjs --target "$HOME/.agentic-design-runtime/current"\`.\n\n## Trusted updates\n\nUpdate check/fetch/apply/rollback remains disabled until an approved official origin, release signing key, provenance builder identity, and channel policy are provisioned in the owner-only trust configuration. The included manifest and provenance files are non-active templates.\n\n## Codex agent plugin\n\nRun \`node install-personal-plugin.mjs\`, start a new Codex task, then invoke \`$agentic-design\`. The plugin installs its exact bundled runtime on first use and loads the versioned design-intelligence curriculum through the existing skill.\n`;
 await writeFile(path.join(release, "INSTALL.md"), install, { mode: 0o600 });
 await cp(
   path.join(root, "scripts", "install-personal-plugin.mjs"),

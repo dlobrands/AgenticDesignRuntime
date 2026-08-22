@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "repository": "dlobrands/AgenticDesignRuntime",
   "sourceRepository": "dlobrands/AgenticDesignRuntime-Internal",
-  "sourceCommit": "f96c90903c0d647c21f14db7362801818989e589",
-  "sourceCommittedAt": "2026-08-12T07:10:52-04:00",
+  "sourceCommit": "edb0eb300902b38b058bf1b114b8560a38f34f3a",
+  "sourceCommittedAt": "2026-08-22T18:26:21-04:00",
   "files": [
     {
       "path": ".editorconfig",
@@ -37,8 +37,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sizeBytes": 7242,
-      "sha256": "ff171c2343366893c746697f54a129640fa983c126204a73226ecdab5eacef47"
+      "sizeBytes": 8036,
+      "sha256": "3f93c05475f6e89f2a64e8763ea38363066a79d9c9d24d385fe88429a8a09df8"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -52,8 +52,8 @@
     },
     {
       "path": "README.md",
-      "sizeBytes": 14504,
-      "sha256": "fda0fee601fc7661eddd597edf00e2af957ba4de3e8aa0b42d532ddf470ad0dc"
+      "sizeBytes": 14898,
+      "sha256": "37b7c3ad1a452bb27103fa05abead63f5b55f25dcb36fe4d7b4dcf7fd4d6da29"
     },
     {
       "path": "SECURITY.md",
@@ -78,7 +78,7 @@
     {
       "path": "apps/mcp/package.json",
       "sizeBytes": 821,
-      "sha256": "e4f2a5cec64fde35bbe7078af25cb2363c9128e5d3a5c9933dccfa06f8de9151"
+      "sha256": "c1aba4c9966bbdca342f5f18bcc3babd1c9cae133c25a5c64f096335a1a75f0a"
     },
     {
       "path": "apps/mcp/src/agent-cli.ts",
@@ -128,7 +128,7 @@
     {
       "path": "apps/runtime/package.json",
       "sizeBytes": 1315,
-      "sha256": "bcf74031d8e08b2c72c75bb5b0f578ed874cda604cebe9bf81583a1b0c365ab7"
+      "sha256": "15d854f66c253f6745d6acfd806388059f0515faa2378584a8e576cb7098a540"
     },
     {
       "path": "apps/runtime/scripts/copy-studio.mjs",
@@ -237,8 +237,8 @@
     },
     {
       "path": "apps/runtime/src/transaction-engine.ts",
-      "sizeBytes": 37651,
-      "sha256": "1473e820c8e8df05511e58961ec78b5b4fb58616eb5eb12ae362427e751bb113"
+      "sizeBytes": 42215,
+      "sha256": "c1ee35f3fca5eee458d59027fc88b893f43f761a45abb9100ac8411fcdf73450"
     },
     {
       "path": "apps/runtime/src/types.ts",
@@ -262,8 +262,8 @@
     },
     {
       "path": "apps/runtime/src/workspace.ts",
-      "sizeBytes": 15489,
-      "sha256": "eaa784fb7af4dbb0eb7c64bb8dec820aa55d8aa0fe5734e7fed790725611ac48"
+      "sizeBytes": 15528,
+      "sha256": "fffec775c39dc2221ce512d8a88275c05dbc860e4d62d3813498076e7e6124b0"
     },
     {
       "path": "apps/runtime/test/brand-library.test.ts",
@@ -292,8 +292,8 @@
     },
     {
       "path": "apps/runtime/test/runtime.test.ts",
-      "sizeBytes": 41341,
-      "sha256": "5a724916e05cf602e48a73bbf8b4d99df8668169c0c5b67b309643b3b2e5686c"
+      "sizeBytes": 43945,
+      "sha256": "ace21d45721050b1dae16edc172f7095002d31a749f594d81b02c0961398ee8a"
     },
     {
       "path": "apps/runtime/test/security.test.ts",
@@ -303,7 +303,7 @@
     {
       "path": "apps/runtime/test/update-manager.test.ts",
       "sizeBytes": 14777,
-      "sha256": "90b9b5655bf26efe919f245a23850af9e0b7961dc583706d261f6b27c0db7cc2"
+      "sha256": "d0d82cce73422b76cf91f7f69762c0adf5395e80bc96bd8e70ff7fd5fc9c342f"
     },
     {
       "path": "apps/runtime/tsconfig.json",
@@ -318,7 +318,7 @@
     {
       "path": "apps/studio/package.json",
       "sizeBytes": 606,
-      "sha256": "1bff305b1d6c1cd891b37a0ada2d5a70a5355d1d17099a219fb4932007db11f1"
+      "sha256": "07018c2f883f733fc217f7ff6aee378be1061c6b7aa9a8e168b6229d95668e0f"
     },
     {
       "path": "apps/studio/render-worker.html",
@@ -327,8 +327,8 @@
     },
     {
       "path": "apps/studio/src/App.tsx",
-      "sizeBytes": 21547,
-      "sha256": "03cd00b3c7e42e22de7f0e3fd0274ebf536e562f6211a4eaeeb35b4dfe0c1d7e"
+      "sizeBytes": 22125,
+      "sha256": "7f1be276dff3a765428775f2a3884d4f88710b1133e8870638b287db83703547"
     },
     {
       "path": "apps/studio/src/Canvas.tsx",
@@ -339,6 +339,11 @@
       "path": "apps/studio/src/ColorPicker.tsx",
       "sizeBytes": 10106,
       "sha256": "82ee36faf9e4270cede05eda33fa1491690f6465910561e490ffb921fc8a7210"
+    },
+    {
+      "path": "apps/studio/src/ContextMenu.tsx",
+      "sizeBytes": 3100,
+      "sha256": "203167266011f2b6be817536a7041ca977f899ff215bbd171cffe73158ca0648"
     },
     {
       "path": "apps/studio/src/DesignBriefs.tsx",
@@ -356,14 +361,19 @@
       "sha256": "2073df7a8e5706f4cff06610140407ba66a4ebdae42556f7996f060db5759ba8"
     },
     {
+      "path": "apps/studio/src/Icon.tsx",
+      "sizeBytes": 2992,
+      "sha256": "7492f07776e49382f63976a34e983a3b2430b1f9dba98cd9e199ca47db80a7bc"
+    },
+    {
       "path": "apps/studio/src/Inspector.tsx",
       "sizeBytes": 107866,
       "sha256": "961c657c5a654cab923ac9b24e810721d086b938a87b7186d7505784815f2c9e"
     },
     {
       "path": "apps/studio/src/Layers.tsx",
-      "sizeBytes": 10837,
-      "sha256": "d8fc5f4b778d6ba52590bbef5d5c2216ee8702cfdfa18b70587ffadeb7be8fc8"
+      "sizeBytes": 16477,
+      "sha256": "40340f610791a4b9e84e8eb8a31362a743a3ff6e77cfab2ff31fa87490a8e887"
     },
     {
       "path": "apps/studio/src/ModalDialog.tsx",
@@ -372,8 +382,8 @@
     },
     {
       "path": "apps/studio/src/ProjectRail.tsx",
-      "sizeBytes": 8376,
-      "sha256": "c071d8810c712473e3947e44a23d6b96312f8e428d2340fa130fdb86ddbef5ad"
+      "sizeBytes": 16503,
+      "sha256": "63b0ca02269ea9594e90c606b32461b37bee71f8d05b0dd58e3cb6a9e51bd8fe"
     },
     {
       "path": "apps/studio/src/ProjectTemplates.tsx",
@@ -387,8 +397,8 @@
     },
     {
       "path": "apps/studio/src/commands.ts",
-      "sizeBytes": 20511,
-      "sha256": "92e14ad96282305932fd0dc9e592cc4b35881a44a7939161533554d1cf7f89ad"
+      "sizeBytes": 21358,
+      "sha256": "54c45b35dfe06d65b63be76e3fa33ab9a90b41d81557ae46db42bce993f3874f"
     },
     {
       "path": "apps/studio/src/conflict-controller.ts",
@@ -442,8 +452,8 @@
     },
     {
       "path": "apps/studio/src/shortcuts.ts",
-      "sizeBytes": 4630,
-      "sha256": "261068a3f082455574853768b1b4f8e985f8e9287d07fefb9ea545315c25678f"
+      "sizeBytes": 5133,
+      "sha256": "077779724886e3ca0a2885a2afc6c4b4745d123fbe44bcde1a76e317015923f7"
     },
     {
       "path": "apps/studio/src/snapping-controller.ts",
@@ -452,8 +462,8 @@
     },
     {
       "path": "apps/studio/src/store.ts",
-      "sizeBytes": 80423,
-      "sha256": "f3a0aee347e4d4142d65b5e35e9881198c8e66d46e54b8af771893cb0181c7fb"
+      "sizeBytes": 87736,
+      "sha256": "014dcb915d70d680801d545567eaf151da7d9eeec63c076246d7ac2725888227"
     },
     {
       "path": "apps/studio/src/studio-session.ts",
@@ -462,8 +472,8 @@
     },
     {
       "path": "apps/studio/src/styles.css",
-      "sizeBytes": 52705,
-      "sha256": "a6642dbb389e874942c3bb41bfc3c9cd06ef4d637551d59ede51e019339f8b14"
+      "sizeBytes": 56074,
+      "sha256": "02bb38a172070ad13a033b5a49397a956cede036e9e697b3681c4b756a6e0fe9"
     },
     {
       "path": "apps/studio/src/text-edit-controller.ts",
@@ -527,8 +537,8 @@
     },
     {
       "path": "apps/studio/test/shortcuts.test.ts",
-      "sizeBytes": 2452,
-      "sha256": "8dd8f8502d847af6680566e8b549faa3899b39497726b73b379391b0d83ecf30"
+      "sizeBytes": 2580,
+      "sha256": "1295a184488f01442ce278a9425654a544615d108b480f4866af840d6665d74b"
     },
     {
       "path": "apps/studio/test/snapping-controller.test.ts",
@@ -584,6 +594,11 @@
       "path": "docs/DESIGN_BRIEFS.md",
       "sizeBytes": 3556,
       "sha256": "cdbc5fe2a307042aa824af246cb9150df4f39537f13f6480395d218d941ba6cc"
+    },
+    {
+      "path": "docs/DESIGN_INTELLIGENCE.md",
+      "sizeBytes": 4596,
+      "sha256": "3ca5dce19a3d805caad5b00dc17618cb684f25bf916d3df544b24638ae647bb9"
     },
     {
       "path": "docs/DESIGN_LAYOUT_SYSTEM.md",
@@ -798,7 +813,7 @@
     {
       "path": "package.json",
       "sizeBytes": 2252,
-      "sha256": "efbcd63187107e0c80e6cac814874919cb9f04f960ac0e5742f37d843d2e3808"
+      "sha256": "6899aebcf17c4a472b35e80a7f6640d2d796124eb032f8b2cc7e5ee4353d8205"
     },
     {
       "path": "packages/client/LICENSE",
@@ -808,7 +823,7 @@
     {
       "path": "packages/client/package.json",
       "sizeBytes": 697,
-      "sha256": "17f9f2d7fdadbe48ace8727b4976bbfdd930d8cdab908bb145949c9f38459201"
+      "sha256": "cf9bbef826e2781792f8e9020bb7cde7b3e690bf3a0cba93878f854214320e05"
     },
     {
       "path": "packages/client/src/index.ts",
@@ -833,7 +848,7 @@
     {
       "path": "packages/core/package.json",
       "sizeBytes": 641,
-      "sha256": "2de06b1ae087e226f08f8a695f3e1127e5d7a5b7d2ae188302128f83a8aacbb9"
+      "sha256": "0e1afab214574741d3da4a5b10d32a1a7acecf5ff787cf91d63d920179f28562"
     },
     {
       "path": "packages/core/src/brand-bindings.ts",
@@ -942,8 +957,8 @@
     },
     {
       "path": "packages/core/src/operations.ts",
-      "sizeBytes": 21553,
-      "sha256": "9d71677f05e129a159cd11e3e5c75a055f87624a54e82b3524774cd094ab9f95"
+      "sizeBytes": 21924,
+      "sha256": "b9c48464127ac1a94dfb923bc858421e0293bff6bfcdd9c3bc6e9afe40a6b5b3"
     },
     {
       "path": "packages/core/src/path-safety.ts",
@@ -1092,8 +1107,8 @@
     },
     {
       "path": "packages/core/test/operation-scope.test.ts",
-      "sizeBytes": 10444,
-      "sha256": "181d300cf54d4e1275fcb80a6bc594be77c1b9329ae0eb0200e22494cfafcb9f"
+      "sizeBytes": 10554,
+      "sha256": "33e4dd2013261d781395229f12a3f51187db22c939f4e600c49ef507c425a97b"
     },
     {
       "path": "packages/core/test/rich-text.test.ts",
@@ -1148,7 +1163,7 @@
     {
       "path": "packages/renderer-pixi/package.json",
       "sizeBytes": 711,
-      "sha256": "602887aff6de5abf2fffc4c5dc8fd125d156c3f7ef3d771986b2bec27bcb6cc6"
+      "sha256": "0a76f1700084f5de134563ed0e109265644229afd2c12e413c6c78c6b31aa679"
     },
     {
       "path": "packages/renderer-pixi/src/blend-modes.ts",
@@ -1227,8 +1242,8 @@
     },
     {
       "path": "plugins/agentic-design-runtime/.codex-plugin/plugin.json",
-      "sizeBytes": 1195,
-      "sha256": "4fd3cfa252604ef21b7d8663793cef963e08a37c47d0692578533dd3bf28c0b1"
+      "sizeBytes": 1220,
+      "sha256": "4a6fc7adcbc42dd8121295f1dddbd7b712749a6d94db8154b4ed13da03a5a10c"
     },
     {
       "path": "plugins/agentic-design-runtime/.mcp.json",
@@ -1236,14 +1251,79 @@
       "sha256": "674ab080988b5d4f6977e367cebf492f76c14d9623aea47870495eb8f99cccf8"
     },
     {
+      "path": "plugins/agentic-design-runtime/design-intelligence-manifest.json",
+      "sizeBytes": 3087,
+      "sha256": "55c63083e66cbea4e851e32ead843365b46c34831b4e35d60cbe71bd3d2b5b3b"
+    },
+    {
       "path": "plugins/agentic-design-runtime/skills/agentic-design/SKILL.md",
-      "sizeBytes": 12458,
-      "sha256": "99c884bdebadcdf9ef2813f1e0c98ceec5c1b4a99dfe8bb31aaf328f20d80665"
+      "sizeBytes": 16156,
+      "sha256": "1bf38578abd1916aff56c34821ca22a306baa6e3685fdd3a339405647bfa70d1"
     },
     {
       "path": "plugins/agentic-design-runtime/skills/agentic-design/agents/openai.yaml",
-      "sizeBytes": 265,
-      "sha256": "2b07de4859d385b0f26f97d5dd8aa05cfad229c282da16d719a43f9c71a2588c"
+      "sizeBytes": 305,
+      "sha256": "1bb66592c65f477c9a790091953b73019dacacda5175a36b5016320025096ba7"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/brief-hierarchy.md",
+      "sizeBytes": 4482,
+      "sha256": "cfdacbbb47ed39aece04c4a637fc4e26f407c643830f1d0ac6cc10dab4e257cd"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/composition-layout.md",
+      "sizeBytes": 5000,
+      "sha256": "9adba9a4b3983e6fe479c6184a601fb8b0017caad257a61c4e3a86e1f479c187"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/contrastive-examples.md",
+      "sizeBytes": 4385,
+      "sha256": "8679ce45caab1a2d5314ec872935ea9b381abc7cd67cfa5ac0631242703cc254"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/core-judgment.md",
+      "sizeBytes": 4486,
+      "sha256": "83699b4be54cd3299976211016a710c47576f3aad0958f1caa1e733645f3b200"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/critique.md",
+      "sizeBytes": 4543,
+      "sha256": "f8cac9e8042c0d1a1c0c544faf26cf4644b40b2fdf282883a54aab2d3ab57af9"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/formats.md",
+      "sizeBytes": 4256,
+      "sha256": "3d89bd3cbd74a7f137d489eb207fb4589d37296310746d23f3138effe00b83c4"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/imagery-brand.md",
+      "sizeBytes": 4704,
+      "sha256": "a893ed8d58e74e556b0ea738c5663ef90bbb0ff672d31ccaf5c80da05f479152"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/patterns-antipatterns.md",
+      "sizeBytes": 6316,
+      "sha256": "6b0f4cda5b0eef94e47e612a4933dfddb4c38bbd6348c89ff9de0b3a4af3444e"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/research-basis.md",
+      "sizeBytes": 4334,
+      "sha256": "64da0799510ef2e47c6d133d972de082784c7110895bf47c277229e025b63fd8"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/text-on-imagery.md",
+      "sizeBytes": 4198,
+      "sha256": "2d2d2f33c8f4bebf0c8e2091a6b24f961721b6f5928d96dba0a5088b26266dba"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/training.md",
+      "sizeBytes": 4161,
+      "sha256": "ce9e8e4c332a43fbc56281dda0e652d6847d1f691c39d4dfe00c60619000d97a"
+    },
+    {
+      "path": "plugins/agentic-design-runtime/skills/agentic-design/references/design-intelligence/typography-color.md",
+      "sizeBytes": 5047,
+      "sha256": "6ca1664f0e41e3c0e1156e3b692dcdd008f7a824736094fa465d4c114a8c7f73"
     },
     {
       "path": "plugins/agentic-design-runtime/skills/agentic-design/references/operations.md",
@@ -1257,8 +1337,8 @@
     },
     {
       "path": "plugins/agentic-design-runtime/skills/agentic-design/references/visual-qa.md",
-      "sizeBytes": 1479,
-      "sha256": "b04749d2610c8942a7da60c36e5082e9a33a5b9688c9deb0be62dfc063433508"
+      "sizeBytes": 1796,
+      "sha256": "55385a334ed7328e9b90d3e07aea674a0b8bf2f1f15250941650f74d01731c79"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -1272,8 +1352,8 @@
     },
     {
       "path": "product-metadata.json",
-      "sizeBytes": 289,
-      "sha256": "ebca1f50a8c94dbab30228dd0240f01fa348caff02b60660e40cfe0d7b109a38"
+      "sizeBytes": 329,
+      "sha256": "c26ba0c0e54c6058ab53e0c70052b6b1a2103741f663143117429a9873568776"
     },
     {
       "path": "public-release-files.json",
@@ -1302,8 +1382,8 @@
     },
     {
       "path": "scripts/install-macos-release.mjs",
-      "sizeBytes": 3754,
-      "sha256": "0081e57a5f83343c99ae1680c028af7241d75afc39b63e51066daa45720dd8bd"
+      "sizeBytes": 3976,
+      "sha256": "6cef9ffe46eb4e77a009c21781a261246bd911a5c08ff0146018243b99af0385"
     },
     {
       "path": "scripts/install-personal-plugin.mjs",
@@ -1312,8 +1392,8 @@
     },
     {
       "path": "scripts/package-release.mjs",
-      "sizeBytes": 9064,
-      "sha256": "6c314c540573cc326e16162f4f2bb00f91e22e8cb57a33e661311edc3f810828"
+      "sizeBytes": 10050,
+      "sha256": "db2790d27f75b2d9d512c0d633b0bb58a5e2b1c02d4b02ef16983e0c9b2ddf69"
     },
     {
       "path": "scripts/publish-or-verify-npm.mjs",
@@ -1327,8 +1407,8 @@
     },
     {
       "path": "scripts/validate-plugin.mjs",
-      "sizeBytes": 3025,
-      "sha256": "e5130d8ede5e07cae38e45d77b913dfb2b682b0f8d5badf704b29d077efd2393"
+      "sizeBytes": 5722,
+      "sha256": "5dcf9de07f4483849bf67aa5eba972d04da15b83c8208951eb7d6b0f2109bc55"
     },
     {
       "path": "scripts/validate-promotion-workflow.mjs",
@@ -1337,8 +1417,8 @@
     },
     {
       "path": "scripts/verify-packed-release.mjs",
-      "sizeBytes": 15596,
-      "sha256": "031aab24b62a145d4241e69ed393e2dd07740ea5d3f0576645b6ef5ae495ebf6"
+      "sizeBytes": 16128,
+      "sha256": "4cf7212501efce36139484fdfcabc81640d050df0be7f7ef0d36d55e4d3b07b5"
     },
     {
       "path": "scripts/verify-public-snapshot.mjs",
@@ -1347,8 +1427,8 @@
     },
     {
       "path": "tests/e2e/studio.spec.ts",
-      "sizeBytes": 375746,
-      "sha256": "75da0eab151637c0d6fe3d73b54d717b2605271590e7cc5970ef12107cb6aced"
+      "sizeBytes": 380199,
+      "sha256": "d60c80379503692e61836e258bfd8ee5b6bd4be65c37302b30e7907b7f7add04"
     },
     {
       "path": "tests/fixtures/performance.ts",

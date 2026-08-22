@@ -17,4 +17,6 @@ Before delivery, verify:
 
 Run `audit_visual_quality` after canonical validation. Pass `planId` when a reviewed DesignPlan targets the frame so required roles, exact brief copy, normalized safe areas, and supported bindings are checked against current canonical state. Treat every returned finding as a deterministic measured condition, not a composite quality score. The report's `heuristic` and `modelJudged` entries are explicitly unevaluated; inspect the rendered preview yourself for those concerns and never describe them as automated objective findings.
 
+After the deterministic audit, apply the evidence format and review order in [critique.md](design-intelligence/critique.md). Report model-judged observations as observations, not measurements, and never let a self-assigned score override a deterministic, factual, legal, brand, accessibility, or production failure.
+
 If the preview is materially weak, revise it without waiting for the user to identify obvious defects. Keep decoration subordinate to communication.

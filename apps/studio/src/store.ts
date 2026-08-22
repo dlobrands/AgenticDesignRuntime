@@ -7,6 +7,7 @@ import {
 import {
   detachTemplateInstanceOperations,
   detachBrandComponentOperations,
+  findNode,
   frameResizeOperations,
   templateSourceNodeIds,
 } from "@tva-agentic-design/core";
@@ -71,6 +72,26 @@ type ExternalConflictState = {
   timestamp: string;
 };
 
+type DeletionUndo =
+  | {
+      kind: "project";
+      message: string;
+      projectId: string;
+      frameId?: string;
+    }
+  | {
+      kind: "frame";
+      message: string;
+      projectId: string;
+      frame: {
+        id: string;
+        slug: string;
+        name: string;
+        width: number;
+        height: number;
+      };
+    };
+
 let textEditRequestSequence = 0;
 let cropEditRequestSequence = 0;
 
@@ -100,6 +121,7 @@ export type StudioState = {
   saveState: SaveState;
   error?: string;
   warning?: string;
+  deletionUndo?: DeletionUndo;
   conflict?: ConflictState;
   externalConflict?: ExternalConflictState;
   failedCommit?: FrameOperation[];
@@ -144,12 +166,20 @@ export type StudioState = {
     copyItemId?: string | null,
   ) => Promise<void>;
   createProject: (name: string) => Promise<void>;
+  renameProject: (name: string) => Promise<void>;
+  trashProject: () => Promise<void>;
+  renameFrame: (frameId: string, name: string) => Promise<void>;
+  deleteFrame: (frameId: string) => Promise<void>;
+  renameLayer: (nodeId: string, name: string) => Promise<void>;
+  undoDeletion: () => Promise<void>;
+  dismissDeletionUndo: () => void;
   createFrame: (name: string, width?: number, height?: number) => Promise<void>;
   duplicateFrame: (
     name: string,
     width: number,
     height: number,
     strategy: FrameResizeStrategy,
+    sourceFrameId?: string,
   ) => Promise<void>;
   resizeFrame: (
     width: number,
@@ -507,6 +537,15 @@ export const createStudioStore = (
         if (frame) await get().loadFrame(frame.id);
         else
           set((state) => {
+            state.activeFrame = undefined;
+            state.history = [];
+            state.selection = [];
+            state.draftTransforms = {};
+            state.draftOperations = [];
+            state.draftBaseRevision = undefined;
+            state.activeDraftSession = undefined;
+            state.preview = undefined;
+            state.validation = undefined;
             state.saveState = "saved";
           });
       },
@@ -1067,6 +1106,178 @@ export const createStudioStore = (
         await get().loadProject(result.projectId);
       },
 
+      renameProject: async (name) => {
+        const project = get().activeProject;
+        if (!project || !name.trim() || name.trim() === project.name) return;
+        await get().client.transact({
+          schemaVersion: 1,
+          mode: "commit",
+          scope: { kind: "project", projectId: project.id },
+          baseRevision: project.revision,
+          actor: { source: "studio", id: "studio" },
+          operations: [{ kind: "renameProject", name: name.trim() }],
+        });
+        await get().loadProject(project.id, get().activeFrame?.id);
+      },
+
+      trashProject: async () => {
+        const project = get().activeProject;
+        if (!project) return;
+        const previousProjects = get().projects;
+        const projectIndex = previousProjects.findIndex(
+          (candidate) => candidate.id === project.id,
+        );
+        const frameId = get().activeFrame?.id;
+        await get().client.transact({
+          schemaVersion: 1,
+          mode: "commit",
+          scope: { kind: "workspace" },
+          baseRevision: null,
+          actor: { source: "studio", id: "studio" },
+          operations: [{ kind: "trashProject", projectId: project.id }],
+        });
+        const projects = await get().client.listProjects();
+        const fallback =
+          projects[Math.min(Math.max(projectIndex, 0), projects.length - 1)];
+        set((state) => {
+          state.projects = projects;
+          state.deletionUndo = {
+            kind: "project",
+            message: `Moved “${project.name}” to Trash.`,
+            projectId: project.id,
+            frameId,
+          };
+          if (!fallback) {
+            state.activeProject = undefined;
+            state.activeFrame = undefined;
+            state.frames = [];
+            state.assets = emptyAssets;
+            state.fonts = emptyFonts;
+            state.history = [];
+            state.selection = [];
+            state.saveState = "saved";
+          }
+        });
+        if (fallback) await get().loadProject(fallback.id);
+      },
+
+      renameFrame: async (frameId, name) => {
+        const project = get().activeProject;
+        const frame = get().frames.find(
+          (candidate) => candidate.id === frameId,
+        );
+        if (!project || !frame || !name.trim() || name.trim() === frame.name)
+          return;
+        await get().client.transact({
+          schemaVersion: 1,
+          mode: "commit",
+          scope: { kind: "project", projectId: project.id },
+          baseRevision: project.revision,
+          actor: { source: "studio", id: "studio" },
+          operations: [{ kind: "renameFrame", frameId, name: name.trim() }],
+        });
+        await get().loadProject(project.id, frameId);
+      },
+
+      deleteFrame: async (frameId) => {
+        const project = get().activeProject;
+        const frame = get().frames.find(
+          (candidate) => candidate.id === frameId,
+        );
+        if (!project || !frame) return;
+        const index = project.frameOrder.indexOf(frameId);
+        const remaining = project.frameOrder.filter((id) => id !== frameId);
+        const nextFrameId =
+          remaining[Math.min(Math.max(index, 0), remaining.length - 1)];
+        await get().client.transact({
+          schemaVersion: 1,
+          mode: "commit",
+          scope: { kind: "project", projectId: project.id },
+          baseRevision: project.revision,
+          actor: { source: "studio", id: "studio" },
+          operations: [{ kind: "deleteFrame", frameId }],
+        });
+        await get().loadProject(project.id, nextFrameId);
+        set((state) => {
+          state.deletionUndo = {
+            kind: "frame",
+            message: `Deleted frame “${frame.name}”.`,
+            projectId: project.id,
+            frame: {
+              id: frame.id,
+              slug: frame.slug,
+              name: frame.name,
+              width: frame.canvas.width,
+              height: frame.canvas.height,
+            },
+          };
+        });
+      },
+
+      renameLayer: async (nodeId, name) => {
+        const frame = get().activeFrame;
+        if (!frame || !name.trim()) return;
+        const node = findNode(frame, nodeId);
+        if (!node || node.name === name.trim()) return;
+        await get().commit([
+          {
+            kind: "updateNode",
+            nodeId,
+            propertyGroup: "common",
+            value: { name: name.trim() },
+          },
+        ]);
+      },
+
+      undoDeletion: async () => {
+        const undo = get().deletionUndo;
+        if (!undo) return;
+        if (undo.kind === "project") {
+          await get().client.transact({
+            schemaVersion: 1,
+            mode: "commit",
+            scope: { kind: "workspace" },
+            baseRevision: null,
+            actor: { source: "studio", id: "studio" },
+            operations: [{ kind: "restoreProject", projectId: undo.projectId }],
+          });
+          const projects = await get().client.listProjects();
+          set((state) => {
+            state.projects = projects;
+            state.deletionUndo = undefined;
+          });
+          await get().loadProject(undo.projectId, undo.frameId);
+          return;
+        }
+        const project = await get().client.getProject(undo.projectId);
+        await get().client.transact({
+          schemaVersion: 1,
+          mode: "commit",
+          scope: { kind: "project", projectId: undo.projectId },
+          baseRevision: project.revision,
+          actor: { source: "studio", id: "studio" },
+          operations: [
+            {
+              kind: "createFrame",
+              frameId: undo.frame.id,
+              slug: undo.frame.slug,
+              name: undo.frame.name,
+              width: undo.frame.width,
+              height: undo.frame.height,
+            },
+          ],
+        });
+        set((state) => {
+          state.deletionUndo = undefined;
+        });
+        await get().loadProject(undo.projectId, undo.frame.id);
+      },
+
+      dismissDeletionUndo: () =>
+        set((state) => {
+          state.deletionUndo = undefined;
+        }),
+
       importFile: async (kind, file) => {
         const project = get().activeProject;
         if (!project) return;
@@ -1161,9 +1372,11 @@ export const createStudioStore = (
         await get().loadProject(project.id, frameId);
       },
 
-      duplicateFrame: async (name, width, height, strategy) => {
+      duplicateFrame: async (name, width, height, strategy, sourceFrameId) => {
         const project = get().activeProject;
-        const frame = get().activeFrame;
+        const frame = sourceFrameId
+          ? get().frames.find((candidate) => candidate.id === sourceFrameId)
+          : get().activeFrame;
         if (!project || !frame) return;
         const newFrameId = crypto.randomUUID();
         await get().client.transact({

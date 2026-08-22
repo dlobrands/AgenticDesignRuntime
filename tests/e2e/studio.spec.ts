@@ -227,6 +227,158 @@ test.afterAll(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
+test("navigator exposes fast recoverable actions and front-to-back layer order", async ({
+  page,
+}) => {
+  const navigatorProjectId = "10101010-1010-4010-8010-101010101010";
+  const navigatorFrameId = "20202020-2020-4020-8020-202020202020";
+  const layerIds = [
+    "30303030-3030-4030-8030-303030303030",
+    "40404040-4040-4040-8040-404040404040",
+    "50505050-5050-4050-8050-505050505050",
+  ];
+  await request("/api/transactions", {
+    schemaVersion: 1,
+    mode: "commit",
+    runtimeId: descriptor.runtimeId,
+    workspaceId: descriptor.workspaceId,
+    scope: { kind: "workspace" },
+    baseRevision: null,
+    actor: { source: "system", id: "navigator-e2e" },
+    operations: [
+      {
+        kind: "createProject",
+        projectId: navigatorProjectId,
+        slug: "navigator-efficiency",
+        name: "Navigator efficiency",
+      },
+    ],
+  });
+  await request("/api/transactions", {
+    schemaVersion: 1,
+    mode: "commit",
+    runtimeId: descriptor.runtimeId,
+    workspaceId: descriptor.workspaceId,
+    scope: { kind: "project", projectId: navigatorProjectId },
+    baseRevision: 0,
+    actor: { source: "system", id: "navigator-e2e" },
+    operations: [
+      {
+        kind: "createFrame",
+        frameId: navigatorFrameId,
+        slug: "navigator-frame",
+        name: "Navigator frame",
+        width: 800,
+        height: 600,
+      },
+    ],
+  });
+  await request("/api/transactions", {
+    schemaVersion: 1,
+    mode: "commit",
+    runtimeId: descriptor.runtimeId,
+    workspaceId: descriptor.workspaceId,
+    scope: {
+      kind: "frame",
+      projectId: navigatorProjectId,
+      frameId: navigatorFrameId,
+    },
+    baseRevision: 0,
+    actor: { source: "system", id: "navigator-e2e" },
+    operations: ["Bottom", "Middle", "Top"].map((name, index) => ({
+      kind: "createNode",
+      parentId: "root",
+      node: {
+        id: layerIds[index],
+        type: "rectangle",
+        name,
+        visible: true,
+        locked: false,
+        transform: {
+          x: 40 + index * 30,
+          y: 40 + index * 30,
+          width: 200,
+          height: 120,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          skewX: 0,
+          skewY: 0,
+          anchorX: 0,
+          anchorY: 0,
+        },
+        opacity: 1,
+        blendMode: "normal",
+        fill: { type: "solid", color: "#315BFF", opacity: 1 },
+        cornerRadius: {
+          topLeft: 0,
+          topRight: 0,
+          bottomRight: 0,
+          bottomLeft: 0,
+        },
+      },
+    })),
+  });
+
+  await bootstrapStudio(
+    page,
+    `/project/${navigatorProjectId}/frame/${navigatorFrameId}`,
+  );
+  await expect(page.locator(".layer-name")).toHaveText([
+    "Top",
+    "Middle",
+    "Bottom",
+  ]);
+  const topLayer = page.getByRole("treeitem", { name: /Top/ });
+  await expect(
+    topLayer.getByRole("button", { name: "Hide Top" }),
+  ).toBeVisible();
+  await expect(
+    topLayer.getByRole("button", { name: "Lock Top" }),
+  ).toBeVisible();
+  await topLayer.click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "Duplicate" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
+  const rename = page.getByLabel("Rename Top");
+  await rename.fill("Foreground");
+  await rename.press("Enter");
+  await expect(page.getByText("Foreground", { exact: true })).toBeVisible();
+
+  await page
+    .getByRole("treeitem", { name: /Foreground/ })
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Duplicate" }).click();
+  await expect(page.locator(".layer-row:not(.layer-derived)")).toHaveCount(4);
+
+  await page
+    .locator(".frame-row")
+    .filter({ hasText: "Navigator frame" })
+    .getByRole("button", { name: "Delete frame" })
+    .click();
+  await expect(
+    page.getByText("Deleted frame “Navigator frame”."),
+  ).toBeVisible();
+  await page
+    .locator(".deletion-undo")
+    .getByRole("button", { name: "Undo" })
+    .click();
+  await expect(
+    page.locator(".frame-select").filter({ hasText: "Navigator frame" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Move project to Trash" }).click();
+  await expect(
+    page.getByText("Moved “Navigator efficiency” to Trash."),
+  ).toBeVisible();
+  await page
+    .locator(".deletion-undo")
+    .getByRole("button", { name: "Undo" })
+    .click();
+  await expect(page.getByLabel("Active project", { exact: true })).toHaveValue(
+    navigatorProjectId,
+  );
+});
+
 test("two Studio sessions and MCP synchronize without self-echo or provenance spoofing", async ({
   browser,
 }, testInfo) => {
@@ -4142,7 +4294,7 @@ test("production Studio previews drag transforms before one canonical commit", a
     .getByRole("treeitem")
     .filter({ hasText: "Rectangle" });
   await rectangleForReorder.focus();
-  await page.keyboard.press("Alt+ArrowDown");
+  await page.keyboard.press("Alt+ArrowUp");
   await expect.poll(() => transactionRequests).toBe(hierarchyTransactions + 1);
   await expect(page.getByRole("button", { name: /Portrait/ })).toContainText(
     "r7",
@@ -4340,7 +4492,7 @@ test("Studio previews color, scale, rotation, and marquee selection before one r
   const layer = page
     .getByRole("treeitem")
     .filter({ hasText: "Rectangle" })
-    .last();
+    .first();
   await layer.click();
   const canvas = page.locator("canvas");
   const selectionBox = page.locator(".selection-box");

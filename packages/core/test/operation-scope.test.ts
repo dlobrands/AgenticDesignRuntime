@@ -110,6 +110,8 @@ const operations = {
     slug: "scope-fixture",
     name: "Scope fixture",
   },
+  trashProject: { kind: "trashProject", projectId },
+  restoreProject: { kind: "restoreProject", projectId },
   renameProject: { kind: "renameProject", name: "Renamed" },
   setExportPreset: {
     kind: "setExportPreset",

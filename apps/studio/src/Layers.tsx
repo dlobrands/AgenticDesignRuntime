@@ -5,6 +5,8 @@ import {
   type SceneNode,
 } from "@tva-agentic-design/core";
 import { executeStudioCommand } from "./commands";
+import { ContextMenu } from "./ContextMenu";
+import { Icon } from "./Icon";
 import { useStudio } from "./store";
 
 const glyph: Record<SceneNode["type"], string> = {
@@ -33,10 +35,20 @@ function LayerRow({
   const frame = useStudio((state) => state.activeFrame)!;
   const selection = useStudio((state) => state.selection);
   const select = useStudio((state) => state.select);
+  const renameLayer = useStudio((state) => state.renameLayer);
   const [expanded, setExpanded] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState(node.name);
+  const [menu, setMenu] = useState<{ x: number; y: number }>();
+  const [dropMode, setDropMode] = useState<"before" | "after" | "inside">();
   const isContainer = node.type === "group" || node.type === "mask";
   const selected = selection.includes(node.id);
   const derived = adjustments.get(node.id) ?? [];
+  const nodeLocation = findNodeLocation(frame, node.id);
+  const siblingCount =
+    nodeLocation?.locationKind === "child"
+      ? nodeLocation.parent.children.length
+      : 0;
 
   const reorder = (delta: number) => {
     const location = findNodeLocation(frame, node.id);
@@ -64,7 +76,7 @@ function LayerRow({
       });
       return;
     }
-    const previous = location.parent.children[location.index - 1];
+    const previous = location.parent.children[location.index + 1];
     if (!previous || (previous.type !== "group" && previous.type !== "mask"))
       return;
     executeStudioCommand({
@@ -78,7 +90,7 @@ function LayerRow({
   return (
     <>
       <div
-        className={`layer-row${selected ? " is-selected" : ""}${node.visible ? "" : " is-hidden"}`}
+        className={`layer-row${selected ? " is-selected" : ""}${node.visible ? "" : " is-hidden"}${dropMode ? ` drop-${dropMode}` : ""}`}
         style={{ paddingInlineStart: 8 + depth * 14 }}
         role="treeitem"
         aria-level={depth + 1}
@@ -93,17 +105,33 @@ function LayerRow({
         onDragOver={(event) => {
           event.preventDefault();
           event.dataTransfer.dropEffect = "move";
+          const bounds = event.currentTarget.getBoundingClientRect();
+          const ratio = (event.clientY - bounds.top) / bounds.height;
+          setDropMode(
+            isContainer && ratio >= 0.25 && ratio <= 0.75
+              ? "inside"
+              : ratio < 0.5
+                ? "before"
+                : "after",
+          );
         }}
+        onDragLeave={() => setDropMode(undefined)}
         onDrop={(event) => {
           event.preventDefault();
           const sourceId = event.dataTransfer.getData("application/x-adr-node");
           if (!sourceId || sourceId === node.id) return;
           const targetLocation = findNodeLocation(frame, node.id);
           if (!targetLocation) return;
-          const parentId = isContainer ? node.id : targetLocation.parentId;
-          const index = isContainer
-            ? node.children.length
-            : targetLocation.index;
+          const mode = dropMode ?? "before";
+          setDropMode(undefined);
+          const parentId =
+            mode === "inside" ? node.id : targetLocation.parentId;
+          const index =
+            mode === "inside"
+              ? "children" in node
+                ? node.children.length
+                : 0
+              : targetLocation.index + (mode === "before" ? 1 : 0);
           executeStudioCommand({
             id: "layer.move",
             nodeId: sourceId,
@@ -112,6 +140,11 @@ function LayerRow({
           });
         }}
         onClick={(event) => select(node.id, event.shiftKey || event.metaKey)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          if (!selected) select(node.id);
+          setMenu({ x: event.clientX, y: event.clientY });
+        }}
         onKeyDown={(event) => {
           if (event.altKey && event.key === "ArrowLeft") {
             event.preventDefault();
@@ -125,11 +158,24 @@ function LayerRow({
           }
           if (event.key === "ArrowUp" && event.altKey) {
             event.preventDefault();
-            reorder(-1);
+            reorder(1);
           }
           if (event.key === "ArrowDown" && event.altKey) {
             event.preventDefault();
-            reorder(1);
+            reorder(-1);
+          }
+          if (event.key === "F2") {
+            event.preventDefault();
+            setDraftName(node.name);
+            setEditing(true);
+          }
+          if (
+            event.key === "ContextMenu" ||
+            (event.shiftKey && event.key === "F10")
+          ) {
+            event.preventDefault();
+            const bounds = event.currentTarget.getBoundingClientRect();
+            setMenu({ x: bounds.left + 32, y: bounds.top + 24 });
           }
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -148,14 +194,49 @@ function LayerRow({
             setExpanded(!expanded);
           }}
         >
-          {isContainer ? (expanded ? "−" : "+") : ""}
+          {isContainer && (
+            <Icon name={expanded ? "chevron-down" : "chevron-right"} />
+          )}
         </button>
         <span className={`layer-glyph type-${node.type}`} aria-hidden="true">
           {glyph[node.type]}
         </span>
-        <span className="layer-name">{node.name}</span>
+        {editing ? (
+          <input
+            className="inline-name-input"
+            value={draftName}
+            autoFocus
+            aria-label={`Rename ${node.name}`}
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) => setDraftName(event.currentTarget.value)}
+            onBlur={() => {
+              if (draftName.trim()) void renameLayer(node.id, draftName);
+              setEditing(false);
+            }}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") {
+                setDraftName(node.name);
+                setEditing(false);
+              }
+            }}
+          />
+        ) : (
+          <span
+            className="layer-name"
+            onDoubleClick={(event) => {
+              event.stopPropagation();
+              setDraftName(node.name);
+              setEditing(true);
+            }}
+          >
+            {node.name}
+          </span>
+        )}
         <button
           className="layer-toggle"
+          title={node.visible ? `Hide ${node.name}` : `Show ${node.name}`}
           aria-label={node.visible ? `Hide ${node.name}` : `Show ${node.name}`}
           onClick={(event) => {
             event.stopPropagation();
@@ -165,10 +246,11 @@ function LayerRow({
             });
           }}
         >
-          {node.visible ? "●" : "○"}
+          <Icon name={node.visible ? "eye" : "eye-off"} />
         </button>
         <button
           className="layer-toggle"
+          title={node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`}
           aria-label={node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`}
           onClick={(event) => {
             event.stopPropagation();
@@ -178,9 +260,85 @@ function LayerRow({
             });
           }}
         >
-          {node.locked ? "◆" : "◇"}
+          <Icon name={node.locked ? "lock" : "lock-open"} />
+        </button>
+        <button
+          className="layer-action layer-delete"
+          title={`Delete ${node.name}`}
+          aria-label={`Delete ${node.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!selected) select(node.id);
+            executeStudioCommand({ id: "selection.delete" });
+          }}
+        >
+          <Icon name="trash" />
         </button>
       </div>
+      {menu && (
+        <ContextMenu
+          {...menu}
+          onClose={() => setMenu(undefined)}
+          items={[
+            {
+              label: "Rename",
+              icon: "rename",
+              shortcut: "F2",
+              movesFocus: true,
+              action: () => {
+                setDraftName(node.name);
+                setEditing(true);
+              },
+            },
+            {
+              label: "Duplicate",
+              icon: "copy",
+              shortcut: "⌘D",
+              disabled: selection.length !== 1 || node.type === "adjustment",
+              action: () => executeStudioCommand({ id: "selection.duplicate" }),
+            },
+            {
+              label: node.visible ? "Hide" : "Show",
+              icon: node.visible ? "eye-off" : "eye",
+              action: () =>
+                executeStudioCommand({
+                  id: "layer.toggle-visibility",
+                  nodeId: node.id,
+                }),
+            },
+            {
+              label: node.locked ? "Unlock" : "Lock",
+              icon: node.locked ? "lock-open" : "lock",
+              action: () =>
+                executeStudioCommand({
+                  id: "layer.toggle-lock",
+                  nodeId: node.id,
+                }),
+            },
+            {
+              label: "Bring Forward",
+              disabled:
+                nodeLocation?.locationKind !== "child" ||
+                nodeLocation.index >= siblingCount - 1,
+              action: () => reorder(1),
+            },
+            {
+              label: "Send Backward",
+              disabled:
+                nodeLocation?.locationKind !== "child" ||
+                nodeLocation.index <= 0,
+              action: () => reorder(-1),
+            },
+            {
+              label: "Delete",
+              icon: "trash",
+              shortcut: "⌫",
+              danger: true,
+              action: () => executeStudioCommand({ id: "selection.delete" }),
+            },
+          ]}
+        />
+      )}
       {node.type === "mask" && expanded && (
         <div
           className="layer-row layer-derived"
@@ -199,8 +357,9 @@ function LayerRow({
       )}
       {isContainer &&
         expanded &&
-        node.children
+        [...node.children]
           .filter((child) => child.type !== "adjustment")
+          .reverse()
           .map((child) => (
             <LayerRow
               key={child.id}
@@ -210,7 +369,7 @@ function LayerRow({
               isFirst={false}
             />
           ))}
-      {derived.map((adjustment) => (
+      {[...derived].reverse().map((adjustment) => (
         <LayerRow
           key={adjustment.id}
           node={adjustment}
@@ -245,11 +404,13 @@ export function LayersPanel() {
         <p className="empty-copy">Choose a frame.</p>
       </section>
     );
-  const roots = frame.root.children.filter(
-    (node) =>
-      node.type !== "adjustment" &&
-      (!query || node.name.toLowerCase().includes(query.toLowerCase())),
-  );
+  const roots = frame.root.children
+    .filter(
+      (node) =>
+        node.type !== "adjustment" &&
+        (!query || node.name.toLowerCase().includes(query.toLowerCase())),
+    )
+    .reverse();
   const showFilter = frame.root.children.length > 8 || query.length > 0;
   return (
     <section className="panel layers-panel" aria-label="Layers panel">
@@ -321,15 +482,17 @@ export function LayersPanel() {
         ) : (
           <p className="empty-copy">No matching layers.</p>
         )}
-        {(adjustments.get("root") ?? []).map((adjustment, index) => (
-          <LayerRow
-            key={adjustment.id}
-            node={adjustment}
-            depth={0}
-            adjustments={adjustments}
-            isFirst={roots.length === 0 && index === 0}
-          />
-        ))}
+        {[...(adjustments.get("root") ?? [])]
+          .reverse()
+          .map((adjustment, index) => (
+            <LayerRow
+              key={adjustment.id}
+              node={adjustment}
+              depth={0}
+              adjustments={adjustments}
+              isFirst={roots.length === 0 && index === 0}
+            />
+          ))}
       </div>
     </section>
   );

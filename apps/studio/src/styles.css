@@ -362,6 +362,31 @@ pre {
   background: var(--surface-input);
   font-size: 11px;
 }
+.project-picker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  gap: 4px;
+}
+.project-picker-row .icon-button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--quiet);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+.project-picker-row .icon-button:hover:not(:disabled) {
+  color: #ffaaa3;
+  background: #382322;
+  border-color: #63403d;
+}
+.project-name-input {
+  width: 100%;
+  height: 30px;
+}
 .frame-section {
   flex: 1;
   min-height: 0;
@@ -373,7 +398,15 @@ pre {
   overflow: auto;
   max-height: calc(100% - 25px);
 }
-.frame-list > button {
+.frame-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+.frame-select {
   display: grid;
   grid-template-columns: 25px minmax(0, 1fr) auto;
   align-items: center;
@@ -384,24 +417,55 @@ pre {
   text-align: left;
   background: transparent;
   color: var(--muted);
-  border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 3px;
 }
-.frame-list > button:hover {
+.frame-row:hover {
   background: var(--surface-2);
+}
+.frame-row:hover .frame-select {
   color: var(--text);
 }
-.frame-list > button.is-active {
+.frame-row.is-active {
   background: #252b40;
   border-color: #3f518b;
-  color: var(--text);
   box-shadow: inset 2px 0 var(--cobalt);
+}
+.frame-row.is-active .frame-select {
+  color: var(--text);
+}
+.frame-row-actions {
+  display: none;
+  align-items: center;
+  padding-right: 3px;
+}
+.frame-row:hover .frame-row-actions,
+.frame-row.is-active .frame-row-actions,
+.frame-row:focus-within .frame-row-actions {
+  display: flex;
+}
+.frame-row-actions button {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--quiet);
+  background: transparent;
+  border-radius: 3px;
+}
+.frame-row-actions button:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+.frame-row-actions .danger-action:hover {
+  color: #ffaaa3;
+  background: #482825;
 }
 .frame-index {
   font: 10px "IBM Plex Mono";
   color: var(--quiet);
 }
-.frame-list button > span:nth-child(2) {
+.frame-select > span:nth-child(2) {
   display: grid;
   min-width: 0;
 }
@@ -462,6 +526,7 @@ pre {
   padding: 1px 6px 7px;
 }
 .layer-row {
+  position: relative;
   min-height: 32px;
   display: flex;
   align-items: center;
@@ -485,7 +550,8 @@ pre {
   opacity: 0.52;
 }
 .layer-disclosure,
-.layer-toggle {
+.layer-toggle,
+.layer-action {
   width: 24px;
   height: 24px;
   flex: none;
@@ -498,13 +564,98 @@ pre {
   opacity: 1;
 }
 .layer-toggle {
-  opacity: 0.42;
+  opacity: 0.7;
+}
+.layer-action {
+  display: none;
 }
 .layer-row:hover .layer-toggle,
 .layer-row.is-selected .layer-toggle,
 .layer-row:focus-within .layer-toggle,
 .layer-toggle:focus-visible {
   opacity: 1;
+}
+.layer-row:hover .layer-action,
+.layer-row.is-selected .layer-action,
+.layer-row:focus-within .layer-action {
+  display: grid;
+  place-items: center;
+}
+.layer-delete:hover {
+  color: #ffaaa3;
+  background: #482825;
+}
+.inline-name-input {
+  min-width: 0;
+  height: 24px;
+  padding: 0 5px;
+  color: var(--text);
+  background: var(--surface-input);
+  border: 1px solid var(--cobalt-bright);
+  border-radius: 2px;
+}
+.layer-row.drop-before::before,
+.layer-row.drop-after::after {
+  position: absolute;
+  z-index: 2;
+  right: 3px;
+  left: 3px;
+  height: 2px;
+  content: "";
+  background: var(--cobalt-bright);
+  pointer-events: none;
+}
+.layer-row.drop-before::before {
+  top: -2px;
+}
+.layer-row.drop-after::after {
+  bottom: -2px;
+}
+.layer-row.drop-inside {
+  border-color: var(--cobalt-bright);
+  background: #29314c;
+}
+.context-menu {
+  position: fixed;
+  z-index: 110;
+  width: 210px;
+  display: grid;
+  gap: 2px;
+  padding: 5px;
+  color: var(--text);
+  background: #24251f;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 5px;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 55%);
+}
+.context-menu button {
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 7px;
+  text-align: left;
+  color: var(--muted);
+  background: transparent;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.context-menu button:hover:not(:disabled),
+.context-menu button:focus-visible {
+  color: white;
+  background: var(--surface-3);
+}
+.context-menu button.is-danger {
+  color: #f0a7a1;
+}
+.context-menu button.is-danger:hover,
+.context-menu button.is-danger:focus-visible {
+  background: #482825;
+}
+.context-menu kbd {
+  color: var(--quiet);
+  font: 9px "IBM Plex Mono";
 }
 .layer-glyph {
   width: 20px;
@@ -2098,6 +2249,20 @@ pre {
   border-color: #71403d;
   background: #3b2422;
   color: #f4bbb6;
+}
+.feedback-toast.deletion-undo {
+  top: 64px;
+  border-color: #40558f;
+  background: #252b40;
+  color: #dce4ff;
+}
+.feedback-toast.deletion-undo button:first-of-type {
+  padding: 4px 7px;
+  color: white;
+  background: #344a92;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
 }
 .feedback-toast button {
   background: transparent;

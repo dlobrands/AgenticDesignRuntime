@@ -23,9 +23,38 @@ Build immediately when the request supplies a clear subject, copy, and output co
 
 Search the client project for relevant logos, imagery, brand guidance, and fonts before asking for files. Use an available image-generation capability when the brief requires original raster imagery, then import the resulting file normally. Do not introduce a remote AI provider into the runtime.
 
+## Apply design intelligence
+
+Read [core-judgment.md](references/design-intelligence/core-judgment.md) before creating a new design or substantially redesigning an existing one. For a bounded inspection, export, startup, or exact local revision, apply the doctrine below without loading unrelated course modules.
+
+- Start with communication intent, content hierarchy, and spatial structure; choose style afterward.
+- Preserve approved copy, factual claims, brand assets, and protected human decisions exactly.
+- Establish one dominant message or subject, an intentional reading order, semantic groups, and repeated alignment relationships.
+- Treat imagery as semantic space. Protect faces, hands, products, labels, logos, and other critical details before placing text.
+- Render actual pixels and inspect them at delivery size and reduced size. Canonical data alone is not visual proof.
+- Correct the smallest defective relationship that resolves the problem; do not rebuild successful structure for local defects.
+- Separate deterministic findings from heuristic or model-judged critique. Never manufacture an objective quality score.
+
+Use ADR's canonical DesignBriefs and DesignPlans for durable intent. Do not create a parallel `design-brief.json`, `design-plan.json`, layout specification, review database, or alternate scene model. Express P0-P3 thinking through canonical semantic roles and ordered `contentHierarchy.priority`; express layout through Plan regions, anchors, safe areas, constraints, bindings, assignments, variants, and protected decisions.
+
+Load only the references relevant to the task:
+
+- Briefing and hierarchy: [brief-hierarchy.md](references/design-intelligence/brief-hierarchy.md)
+- Composition and spatial planning: [composition-layout.md](references/design-intelligence/composition-layout.md)
+- Text over or beside imagery: [text-on-imagery.md](references/design-intelligence/text-on-imagery.md)
+- Typography, color, and accessibility: [typography-color.md](references/design-intelligence/typography-color.md)
+- Imagery, graphics, and brand systems: [imagery-brand.md](references/design-intelligence/imagery-brand.md)
+- Social, thumbnail, presentation, print-bound, or multi-format work: [formats.md](references/design-intelligence/formats.md)
+- Structural exploration and common failure patterns: [patterns-antipatterns.md](references/design-intelligence/patterns-antipatterns.md)
+- Rendered review and revision: [critique.md](references/design-intelligence/critique.md)
+- Contrastive examples or deliberate practice: [contrastive-examples.md](references/design-intelligence/contrastive-examples.md) and [training.md](references/design-intelligence/training.md)
+- Research provenance only when maintaining the curriculum: [research-basis.md](references/design-intelligence/research-basis.md)
+
 ## Build and revise
 
 Read [operations.md](references/operations.md) before the first mutation in a task.
+
+For greenfield client-facing or public work with several defensible directions, compare three structurally different grayscale candidates before detailed styling. Prefer three `preview_batch` results from the same canonical base revision, changing the spatial thesis rather than only color, font, or ornament, and commit only the selected exact preview. If the pending preview pixels are not available for direct inspection, create separate candidate frames through normal preview/commit operations and call `render_preview` for each; never select from coordinates or diffs alone. Retain unselected candidate frames for review unless the user requests their recoverable removal. Skip this exploration for exact recreations, user-selected directions, and bounded revisions where it would add no decision value.
 
 1. Inspect current project, frame, asset, font, and revision state.
 2. Create a project at workspace scope, then create frames at project scope when needed.
@@ -48,7 +77,7 @@ When a human changes the design, call `wait_for_frame_change` or reload the fram
 
 ## Review and deliver
 
-Read [visual-qa.md](references/visual-qa.md) before final delivery. Return rendered PNG content in the conversation after each material draft.
+Read [visual-qa.md](references/visual-qa.md) and [critique.md](references/design-intelligence/critique.md) before final delivery. Return rendered PNG content in the conversation after each material draft.
 
 When the user accepts the design or explicitly requests final export:
 

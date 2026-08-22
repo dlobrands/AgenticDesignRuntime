@@ -158,6 +158,80 @@ describe("transaction pipeline", () => {
     ).not.toBe(`project:${projectId}`);
   });
 
+  it("moves projects to recoverable trash and restores exact frame state after restart", async () => {
+    const harness = await createHarness();
+    await bootstrapProject(harness);
+    const { root, descriptorDirectory, engine, workspace } = harness;
+    await engine.execute({
+      schemaVersion: 1,
+      mode: "commit",
+      runtimeId: workspace.runtimeId,
+      workspaceId: workspace.config.workspaceId,
+      scope: { kind: "frame", projectId, frameId },
+      baseRevision: 0,
+      actor: { source: "http", id: "trash-fixture" },
+      operations: [{ kind: "createNode", parentId: "root", node: rectangle() }],
+    });
+    const expectedHash = await semanticFrameHash(
+      requireFrame(requireProject(workspace, projectId), frameId),
+    );
+    await engine.execute({
+      schemaVersion: 1,
+      mode: "commit",
+      runtimeId: workspace.runtimeId,
+      workspaceId: workspace.config.workspaceId,
+      scope: { kind: "workspace" },
+      baseRevision: null,
+      actor: { source: "http", id: "trash-project" },
+      operations: [{ kind: "trashProject", projectId }],
+    });
+    expect(workspace.projects.has(projectId)).toBe(false);
+    await expect(
+      stat(path.join(root, "projects", "release-test")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    expect(
+      (
+        await stat(
+          path.join(root, ".design-runtime", "trash", "projects", projectId),
+        )
+      ).isDirectory(),
+    ).toBe(true);
+    await closeWorkspace(workspace);
+
+    const reopened = await openWorkspace(root, { descriptorDirectory });
+    expect(reopened.projects.size).toBe(0);
+    const logger = new RuntimeLogger({
+      directory: path.join(root, ".design-runtime", "logs"),
+      ...reopened.config.logging,
+    });
+    const metrics = new RuntimeMetrics(
+      path.join(root, ".design-runtime", "metrics"),
+      reopened.startedAt,
+    );
+    const events = new RuntimeEventBus(reopened);
+    const reopenedEngine = new TransactionEngine({
+      workspace: reopened,
+      logger,
+      metrics,
+      events,
+    });
+    await reopenedEngine.execute({
+      schemaVersion: 1,
+      mode: "commit",
+      runtimeId: reopened.runtimeId,
+      workspaceId: reopened.config.workspaceId,
+      scope: { kind: "workspace" },
+      baseRevision: null,
+      actor: { source: "http", id: "restore-project" },
+      operations: [{ kind: "restoreProject", projectId }],
+    });
+    const restored = requireProject(reopened, projectId);
+    expect(await semanticFrameHash(requireFrame(restored, frameId))).toBe(
+      expectedHash,
+    );
+    await closeWorkspace(reopened);
+  });
+
   it("serializes simultaneous project and child-frame commits without losing either", async () => {
     const harness = await createHarness();
     await bootstrapProject(harness);

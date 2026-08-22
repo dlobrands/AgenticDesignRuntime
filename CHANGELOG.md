@@ -4,6 +4,18 @@ This project follows semantic versioning. Release entries describe user-visible 
 
 ## Unreleased
 
+## 1.0.2 - 2026-08-22
+
+### Added
+
+- A versioned, progressively disclosed design-intelligence curriculum inside the existing `$agentic-design` plugin skill, with ADR-native briefing, hierarchy, composition, typography, color, imagery, Brand, format, critique, contrastive-example, and training guidance plus packed-manifest verification.
+- Fast, keyboard-accessible project, frame, and layer context menus with inline rename, frame/layer duplication, recoverable project trash and restoration, and nearby common actions.
+
+### Changed
+
+- Layers now display front-to-back while canonical ordering and keyboard/drag stacking semantics remain unchanged.
+- Project and frame navigation now exposes denser self-service lifecycle controls without bypassing runtime transactions, history, or recovery.
+
 ## 1.0.1 - 2026-08-12
 
 ### Added
