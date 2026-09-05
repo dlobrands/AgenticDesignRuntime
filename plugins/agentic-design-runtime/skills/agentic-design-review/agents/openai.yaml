@@ -1,0 +1,7 @@
+interface:
+  display_name: "Agentic Design Review"
+  short_description: "Audit layered graphics without mutation"
+  default_prompt: "Use $agentic-design-review to inspect this ADR design and return an evidence-backed review without changing it."
+  brand_color: "#315CF5"
+policy:
+  allow_implicit_invocation: true

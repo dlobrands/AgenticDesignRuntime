@@ -1,4 +1,8 @@
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
+import {
+  runCommandSync as execFileSync,
+  commandInvocation,
+} from "./platform.mjs";
 import { once } from "node:events";
 import { createServer } from "node:net";
 import {
@@ -17,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
+const hostOS = process.platform === "win32" ? "windows" : "macos";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const release = path.join(root, "release");
 const productMetadata = JSON.parse(
@@ -83,9 +88,9 @@ const stopRuntime = async () => {
 
 try {
   for (const releaseTool of [
-    "doctor-macos.mjs",
-    "install-macos-release.mjs",
-    "uninstall-macos-release.mjs",
+    `doctor-${hostOS}.mjs`,
+    `install-${hostOS}-release.mjs`,
+    `uninstall-${hostOS}-release.mjs`,
   ])
     if (!(await stat(path.join(release, releaseTool)).catch(() => undefined)))
       throw new Error(`Packed release is missing ${releaseTool}.`);
@@ -151,6 +156,7 @@ try {
     manifest.binaries?.length !== 3 ||
     !manifest.binaries.includes("agentic-design-mcp") ||
     manifest.agentIntegration?.pluginVersion !== expectedPluginVersion ||
+    manifest.agentIntegration?.skills?.length !== 4 ||
     manifest.agentIntegration?.designIntelligenceVersion !==
       productMetadata.designIntelligenceVersion ||
     manifest.compatibility?.runtimeApiVersion !==
@@ -222,9 +228,17 @@ try {
     ADR_DESCRIPTOR_DIRECTORY: descriptors,
     ADR_PREFERENCES_PATH: path.join(temporary, "preferences.json"),
   };
+  const runtimeInvocation = commandInvocation(binaryPath("design-runtime"));
   runtimeProcess = spawn(
-    binaryPath("design-runtime"),
-    ["dev", workspace, "--no-open", "--port", String(port)],
+    runtimeInvocation.command,
+    [
+      ...runtimeInvocation.args,
+      "dev",
+      workspace,
+      "--no-open",
+      "--port",
+      String(port),
+    ],
     {
       cwd: temporary,
       env: runtimeEnvironment,
@@ -322,7 +336,7 @@ try {
     execFileSync(
       process.execPath,
       [
-        path.join(release, "install-macos-release.mjs"),
+        path.join(release, `install-${hostOS}-release.mjs`),
         "--release",
         release,
         "--target",
@@ -340,7 +354,7 @@ try {
     installerResult.version !== expectedVersion
   )
     throw new Error(
-      "macOS installer did not report an exact successful install.",
+      "Platform installer did not report an exact successful install.",
     );
   const installedPlaywrightVersion = execFileSync(
     path.join(installerTarget, "node_modules", ".bin", "playwright"),
@@ -352,17 +366,17 @@ try {
     `Version ${productMetadata.referenceVersions.playwright}`
   )
     throw new Error(
-      `macOS installer linked ${installedPlaywrightVersion || "no Playwright version"}.`,
+      `Platform installer linked ${installedPlaywrightVersion || "no Playwright version"}.`,
     );
   const doctor = JSON.parse(
     execFileSync(
       process.execPath,
-      [path.join(release, "doctor-macos.mjs"), "--target", installerTarget],
+      [path.join(release, `doctor-${hostOS}.mjs`), "--target", installerTarget],
       { cwd: temporary, encoding: "utf8" },
     ).trim(),
   );
   if (doctor.status !== "ready")
-    throw new Error("Installed runtime failed macOS doctor checks.");
+    throw new Error("Installed runtime failed platform doctor checks.");
   const preservedWorkspace = path.join(temporary, "preserved-workspace");
   await mkdir(preservedWorkspace);
   await writeFile(path.join(preservedWorkspace, "sentinel"), "preserved\n");
@@ -370,7 +384,7 @@ try {
     execFileSync(
       process.execPath,
       [
-        path.join(release, "uninstall-macos-release.mjs"),
+        path.join(release, `uninstall-${hostOS}-release.mjs`),
         "--target",
         installerTarget,
         "--recovery-root",
@@ -416,9 +430,34 @@ try {
   let agentWorkspace;
   try {
     const availableTools = await agentClient.listTools();
+    const surface = JSON.parse(
+      await readFile(path.join(pluginDirectory, "tool-surface.json"), "utf8"),
+    );
+    const expectedAgentTools = [
+      ...surface.directTools,
+      ...surface.agentOnlyTools,
+    ].sort();
+    const actualAgentTools = availableTools.tools
+      .map((tool) => tool.name)
+      .sort();
+    if (JSON.stringify(actualAgentTools) !== JSON.stringify(expectedAgentTools))
+      throw new Error("Packed plugin tool surface differs from its manifest.");
+    if (
+      availableTools.tools.some(
+        (tool) =>
+          !tool.outputSchema ||
+          !tool.annotations ||
+          !tool.description?.startsWith("Use this when"),
+      )
+    )
+      throw new Error(
+        "Packed plugin tools require output schemas, annotations, and selection-oriented descriptions.",
+      );
     for (const required of [
       "ensure_design_workspace",
       "preview_batch",
+      "preview_layer_compositing",
+      "preview_arrange_layers",
       "commit_preview",
       "render_preview",
       "open_studio",

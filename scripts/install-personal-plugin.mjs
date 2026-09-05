@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { runCommandSync as execFileSync } from "./platform.mjs";
 import {
   cp,
   mkdir,
@@ -35,13 +35,31 @@ if (!(await stat(archive).catch(() => undefined)))
   throw new Error("Build the plugin release before installing it.");
 
 const pluginCreator = path.join(
-  homedir(),
-  ".codex",
+  process.env.CODEX_HOME ?? path.join(homedir(), ".codex"),
   "skills",
   ".system",
   "plugin-creator",
   "scripts",
 );
+let python;
+for (const candidate of process.platform === "win32"
+  ? ["python", "python3", "py"]
+  : ["python3"]) {
+  try {
+    const version = execFileSync(candidate, ["--version"], {
+      encoding: "utf8",
+    }).trim();
+    if (!/^Python 3\./.test(version)) continue;
+    python = candidate;
+    break;
+  } catch {
+    /* Try the next installed Python launcher. */
+  }
+}
+if (!python)
+  throw new Error(
+    "Python 3 is required for the supported Codex plugin helpers.",
+  );
 const createPlugin = path.join(pluginCreator, "create_basic_plugin.py");
 const cachebuster = path.join(pluginCreator, "update_plugin_cachebuster.py");
 const readMarketplace = path.join(pluginCreator, "read_marketplace_name.py");
@@ -69,7 +87,7 @@ try {
     await rename(target, backup);
   }
   execFileSync(
-    "python3",
+    python,
     [
       createPlugin,
       "agentic-design-runtime",
@@ -81,8 +99,8 @@ try {
     { stdio: "inherit" },
   );
   await cp(extracted, target, { recursive: true, force: true });
-  execFileSync("python3", [cachebuster, target], { stdio: "inherit" });
-  const marketplaceName = execFileSync("python3", [readMarketplace], {
+  execFileSync(python, [cachebuster, target], { stdio: "inherit" });
+  const marketplaceName = execFileSync(python, [readMarketplace], {
     encoding: "utf8",
   }).trim();
   execFileSync(
@@ -90,8 +108,32 @@ try {
     ["plugin", "add", `agentic-design-runtime@${marketplaceName}`],
     { stdio: "inherit" },
   );
+  const selfTest = JSON.parse(
+    execFileSync(
+      "node",
+      [
+        path.join(target, "dist", "agent-cli.js"),
+        "--plugin-root",
+        target,
+        "--self-test-json",
+      ],
+      { encoding: "utf8" },
+    ),
+  );
+  if (selfTest.status !== "ok" || !Number.isInteger(selfTest.toolCount))
+    throw new Error("Installed ADR plugin self-test did not pass.");
   process.stdout.write(
-    `${JSON.stringify({ status: "installed", target, marketplace, backup })}\n`,
+    `${JSON.stringify({
+      status: "installed",
+      target,
+      marketplace,
+      backup,
+      pluginVersion: selfTest.pluginVersion,
+      toolCount: selfTest.toolCount,
+      requiresNewTask: true,
+      nextAction:
+        "Start a new Codex task before testing the refreshed ADR skills or MCP tools.",
+    })}\n`,
   );
 } finally {
   await rm(temporary, { recursive: true, force: true });

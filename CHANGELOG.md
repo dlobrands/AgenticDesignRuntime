@@ -4,6 +4,37 @@ This project follows semantic versioning. Release entries describe user-visible 
 
 ## Unreleased
 
+## 2.0.0 - 2026-09-05
+
+### Added
+
+- Native Windows 11 x64 release target with portable CLI/plugin startup, private-file ACL checks, recoverable installation, render-health diagnostics, and a Windows validation handoff. Native Windows acceptance remains pending; macOS regression and package verification passed.
+- Four focused Codex skills for editable design work, read-only review, exact-version Brand systems, and runtime operations, backed by complete source/packed MCP tool parity, output schemas, safety annotations, and a checked-in routing-eval matrix.
+- Explicit backup-producing workspace schema-2 migration and rollback, with Runtime API 2 compatibility checks and fail-closed mixed-version behavior.
+- Structured Studio correction controls for DesignBrief copy/constraints/export intent and DesignPlan objective/constraints while preserving agent-first authoring and preview-first project history.
+- Canonical row/column layout-container intent, wrapped reflow, Studio controls, MCP preview tooling, and atomic cross-format DesignPlan variants that preserve the source frame.
+- Quadratic and elliptical-arc vector commands, even-odd fill intent, safe editable SVG import, direct Studio editing, deterministic rendering, and vector-only or truthful layer-boundary hybrid SVG export.
+- Project-scoped verified process-CMYK ICC profiles and flattened generic CMYK PDF export with explicit DPI, profile hash, bleed/trim boxes, and optional crop marks. ADR does not claim PDF/X, spot-color, overprint, or printer-specific certification.
+- Grapheme-safe rich-text spans and character wrapping plus explicit language and LTR/RTL text intent using the same pinned Chromium shaping path in Studio and export.
+
+### Changed
+
+- Product, plugin, and design-intelligence versions are `2.0.0`; Runtime API and workspace schema are `2`.
+- Plugin installation now self-tests the installed entrypoint and requires a new Codex task before refreshed skills or tools are tested.
+
+## 1.0.3 - 2026-08-26
+
+### Added
+
+- Layer compositing controls for blend mode, fill opacity, effect opacity, and per-effect blend modes across Studio, CLI, MCP previews, canonical operations, and Pixi export rendering.
+- Selection-relative, canvas-relative, and key-layer alignment plus horizontal and vertical distribution across Studio, CLI, and MCP previews.
+- More reliable multi-layer selection with additive, range, cycling, and background-to-layer transitions.
+
+### Fixed
+
+- Canvas hit testing no longer lets a selected background prevent a later foreground-layer selection.
+- Source-only fill opacity and isolated effects now render consistently between Studio previews and exported graphics.
+
 ## 1.0.2 - 2026-08-22
 
 ### Added

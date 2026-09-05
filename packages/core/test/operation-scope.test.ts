@@ -198,6 +198,19 @@ const operations = {
       licenseNotes: "Test fixture",
     },
   },
+  importColorProfile: {
+    kind: "importColorProfile",
+    profile: {
+      id: "00000000-0000-4000-8000-000000000016",
+      name: "Fixture CMYK",
+      path: "color-profiles/fixture.icc",
+      mimeType: "application/vnd.iccprofile",
+      hash: `sha256:${"e".repeat(64)}`,
+      sizeBytes: 128,
+      colorSpace: "cmyk",
+      licenseNotes: "Test fixture",
+    },
+  },
   removeFont: { kind: "removeFont", fontId },
   pinBrandKit: {
     kind: "pinBrandKit",

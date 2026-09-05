@@ -5,6 +5,7 @@ import type {
   BrandLintReport,
   BrandPaletteToken,
   BrandReusableDefinition,
+  ColorProfileRecord,
   DesignBrief,
   DesignPlan,
   DesignPlanCompilation,
@@ -43,11 +44,23 @@ export type ExportArtifact = {
   };
   versions: { runtime: string; chromium: string; pixi: string };
   format: ExportSettings["format"];
-  mimeType: "image/png" | "image/jpeg" | "image/webp";
+  mimeType:
+    | "image/png"
+    | "image/jpeg"
+    | "image/webp"
+    | "image/svg+xml"
+    | "application/pdf";
   scale: number;
   quality?: number;
   transparent: boolean;
   sizeBytes: number;
+  rasterizedNodeIds?: string[];
+  fullyRasterized?: boolean;
+  dpi?: number;
+  outputIccProfileId?: string;
+  outputIccProfileHash?: string;
+  bleedMm?: number;
+  cropMarks?: boolean;
 };
 
 export type BatchExportResult = {
@@ -76,6 +89,7 @@ export type ImportFileResult =
       duplicate: boolean;
       editableVector?: {
         commands: VectorPathCommand[];
+        fillRule?: "nonzero" | "evenodd";
         fill?: ShapeFill;
         stroke?: Stroke;
       };
@@ -86,13 +100,19 @@ export type ImportFileResult =
       font: FontRecord;
       duplicate: boolean;
       transaction: TransactionCommitResult;
+    }
+  | {
+      kind: "color-profile";
+      profile: ColorProfileRecord;
+      duplicate: boolean;
+      transaction: TransactionCommitResult;
     };
 
 export type RuntimeStatus = {
   schemaVersion: 1;
   compatibility: {
-    runtimeApiVersion: 1;
-    workspaceSchemaVersion: 1;
+    runtimeApiVersion: 2;
+    workspaceSchemaVersion: 2;
   };
   runtimeId: string;
   workspaceId: string;
@@ -283,6 +303,11 @@ export class DesignRuntimeClient {
   }
   getFonts(projectId: string): Promise<FontManifest> {
     return this.#request(`/api/projects/${projectId}/fonts`);
+  }
+  getColorProfiles(
+    projectId: string,
+  ): Promise<{ profiles: ColorProfileRecord[] }> {
+    return this.#request(`/api/projects/${projectId}/color-profiles`);
   }
   listBrandKits(): Promise<{ kits: BrandKitRecord[] }> {
     return this.#request("/api/brand-kits");
@@ -834,6 +859,10 @@ export class DesignRuntimeClient {
     planId: string;
     variantRuleId: string;
     baseRevision: number;
+    projectBaseRevision?: number;
+    newFrameId?: string;
+    slug?: string;
+    name?: string;
     actor: { source: "studio" | "http" | "mcp"; id: string };
   }): Promise<DesignPlanPreviewResult> {
     const { projectId, frameId, planId, variantRuleId, ...body } = input;
@@ -982,7 +1011,7 @@ export class DesignRuntimeClient {
 
   async importFile(
     projectId: string,
-    type: "asset" | "font",
+    type: "asset" | "font" | "color-profile",
     file: File,
     baseRevision: number,
   ): Promise<ImportFileResult> {
@@ -1005,15 +1034,26 @@ export class DesignRuntimeClient {
       });
       return { kind: "asset", ...result };
     }
+    if (type === "font") {
+      const result = await this.#request<{
+        font: FontRecord;
+        duplicate: boolean;
+        transaction: TransactionCommitResult;
+      }>(`/api/projects/${projectId}/fonts/import`, {
+        method: "POST",
+        body: form,
+      });
+      return { kind: "font", ...result };
+    }
     const result = await this.#request<{
-      font: FontRecord;
+      profile: ColorProfileRecord;
       duplicate: boolean;
       transaction: TransactionCommitResult;
-    }>(`/api/projects/${projectId}/fonts/import`, {
+    }>(`/api/projects/${projectId}/color-profiles/import`, {
       method: "POST",
       body: form,
     });
-    return { kind: "font", ...result };
+    return { kind: "color-profile", ...result };
   }
 
   subscribe(

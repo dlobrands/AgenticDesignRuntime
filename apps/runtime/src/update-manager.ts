@@ -1,3 +1,5 @@
+import { renameWithRetry as rename } from "../../../scripts/platform.mjs";
+import { isPrivateFile, nodeInvocation } from "../../../scripts/platform.mjs";
 import { execFile } from "node:child_process";
 import { createHash, createPublicKey, randomUUID, verify } from "node:crypto";
 import {
@@ -7,7 +9,6 @@ import {
   readFile,
   readdir,
   realpath,
-  rename,
   rm,
   stat,
   writeFile,
@@ -194,18 +195,26 @@ const defaultHealthCheck: UpdateHealthCheck = async (installPath, manifest) => {
   );
   await chmod(executable, 0o700);
   try {
+    const invocation =
+      manifest.platform === "win32"
+        ? nodeInvocation(executable)
+        : { command: executable, args: [] };
     const version = (
-      await executeFile(executable, ["--version"], {
+      await executeFile(invocation.command, [...invocation.args, "--version"], {
         timeout: 15_000,
         encoding: "utf8",
       })
     ).stdout.trim();
     const health = JSON.parse(
       (
-        await executeFile(executable, ["health", "--json"], {
-          timeout: 60_000,
-          encoding: "utf8",
-        })
+        await executeFile(
+          invocation.command,
+          [...invocation.args, "health", "--json"],
+          {
+            timeout: 60_000,
+            encoding: "utf8",
+          },
+        )
       ).stdout,
     ) as { status?: string; renderVerified?: boolean };
     return {
@@ -452,7 +461,10 @@ export class UpdateManager {
       const metadata = await stat(this.#configurationPath).catch(
         () => undefined,
       );
-      if (metadata && (!metadata.isFile() || (metadata.mode & 0o077) !== 0))
+      if (
+        metadata &&
+        (!metadata.isFile() || !(await isPrivateFile(this.#configurationPath)))
+      )
         throw new RuntimeError(
           "UPDATE_NOT_CONFIGURED",
           "Update trust configuration must be a private owner-only file.",
@@ -781,7 +793,10 @@ export class UpdateManager {
         installPath,
         sequence: manifest.sequence,
         entrypoint: manifest.artifact.entrypoint,
-        invocation: "executable" as const,
+        invocation:
+          manifest.platform === "win32"
+            ? ("node" as const)
+            : ("executable" as const),
         manifestHash: await sha256(stableStringify(manifest)),
       };
       const next: UpdateState = {

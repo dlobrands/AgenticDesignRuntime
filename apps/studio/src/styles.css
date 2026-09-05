@@ -194,6 +194,66 @@ pre {
   gap: 2px;
   border-right: 1px solid var(--hairline);
 }
+.align-menu {
+  position: relative;
+  flex: none;
+}
+.align-menu > summary {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+.align-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.align-menu > summary:hover,
+.align-menu[open] > summary {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.align-menu-panel {
+  position: absolute;
+  z-index: 60;
+  top: 38px;
+  left: 0;
+  width: 226px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-toolbar);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 32%);
+}
+.align-menu-panel button {
+  min-width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+.align-menu-panel button:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.arrange-reference {
+  grid-column: 1 / -1;
+}
+.arrange-reference select {
+  width: 96px;
+  height: 30px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--surface-3);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+}
 .tool-cluster button,
 .canvas-zoom button {
   min-width: 30px;
@@ -2442,6 +2502,21 @@ pre {
   gap: 4px;
 }
 
+.intent-correction {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--control-border);
+  background: color-mix(in srgb, var(--surface-input) 72%, transparent);
+  border-radius: 4px;
+}
+
+.intent-correction > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .design-brief-list small,
 .design-brief-content > div > span {
   color: var(--muted);
@@ -2773,6 +2848,9 @@ pre {
   }
 }
 @media (max-width: 620px) {
+  .brand-lockup {
+    display: none;
+  }
   .centered-text-button {
     display: none !important;
   }

@@ -1,3 +1,10 @@
+import {
+  assertWindowsPath,
+  assertPortableRelativePath,
+  assertLocalWorkspace,
+  pathIsInside,
+  renameWithRetry,
+} from "../../../scripts/platform.mjs";
 import { constants } from "node:fs";
 import {
   access,
@@ -5,7 +12,6 @@ import {
   open,
   readFile,
   realpath,
-  rename,
   rm,
   stat,
 } from "node:fs/promises";
@@ -17,6 +23,12 @@ export const ensureDirectory = async (
   directory: string,
   mode = 0o700,
 ): Promise<void> => {
+  if (process.platform === "win32")
+    assertWindowsPath(
+      path
+        .resolve(directory)
+        .slice(path.parse(path.resolve(directory)).root.length),
+    );
   await mkdir(directory, { recursive: true, mode });
 };
 
@@ -24,6 +36,9 @@ export const readJson = async (filePath: string): Promise<unknown> =>
   JSON.parse(await readFile(filePath, "utf8"));
 
 export const syncDirectory = async (directory: string): Promise<void> => {
+  // Windows cannot open directories through the Node fs API for fsync.
+  // File contents are flushed before rename; journal replay handles interrupted commits.
+  if (process.platform === "win32") return;
   const handle = await open(directory, constants.O_RDONLY);
   try {
     await handle.sync();
@@ -41,6 +56,8 @@ export const stageFile = async (
   ),
   mode = 0o600,
 ): Promise<string> => {
+  if (process.platform === "win32")
+    assertWindowsPath(path.basename(targetPath));
   await ensureDirectory(path.dirname(targetPath));
   const handle = await open(
     temporaryPath,
@@ -60,7 +77,7 @@ export const commitStagedFile = async (
   temporaryPath: string,
   targetPath: string,
 ): Promise<void> => {
-  await rename(temporaryPath, targetPath);
+  await renameWithRetry(temporaryPath, targetPath);
   await syncDirectory(path.dirname(targetPath));
 };
 
@@ -97,6 +114,8 @@ export const appendJsonLine = async (
   targetPath: string,
   value: unknown,
 ): Promise<void> => {
+  if (process.platform === "win32")
+    assertWindowsPath(path.basename(targetPath));
   await ensureDirectory(path.dirname(targetPath));
   const handle = await open(
     targetPath,
@@ -133,6 +152,7 @@ export const assertReadableWritableDirectory = async (
   let resolved: string;
   try {
     resolved = await realpath(directory);
+    await assertLocalWorkspace(resolved);
     const info = await stat(resolved);
     if (!info.isDirectory()) throw new Error("Not a directory");
     await access(resolved, constants.R_OK | constants.W_OK);
@@ -155,7 +175,9 @@ export const resolveInside = async (
   relative: string,
   requireExisting = true,
 ): Promise<string> => {
-  if (path.isAbsolute(relative) || relative.split(/[\\/]/).includes("..")) {
+  try {
+    assertPortableRelativePath(relative);
+  } catch {
     throw new RuntimeError(
       "PATH_TRAVERSAL_REJECTED",
       "The requested path leaves the workspace.",
@@ -177,10 +199,7 @@ export const resolveInside = async (
     const existingParent = await realpath(path.dirname(candidate));
     resolvedCandidate = path.join(existingParent, path.basename(candidate));
   }
-  if (
-    resolvedCandidate !== resolvedRoot &&
-    !resolvedCandidate.startsWith(`${resolvedRoot}${path.sep}`)
-  ) {
+  if (!pathIsInside(resolvedRoot, resolvedCandidate)) {
     throw new RuntimeError(
       "PATH_OUTSIDE_WORKSPACE",
       "The requested path escapes the workspace.",

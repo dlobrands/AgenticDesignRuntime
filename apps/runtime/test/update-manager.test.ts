@@ -72,12 +72,12 @@ const tar = (
   return gzipSync(Buffer.concat(output));
 };
 
-const executableBundle = (version = "1.1.0"): Buffer =>
+const executableBundle = (version = "2.1.0"): Buffer =>
   tar([
     {
       name: "bin/design-runtime",
       mode: 0o755,
-      data: `#!/bin/sh\nif [ "$1" = "--version" ]; then echo '${version}'; elif [ "$1" = "health" ]; then echo '{"status":"healthy","renderVerified":true}'; else exit 2; fi\n`,
+      data: `#!/usr/bin/env node\nif (process.argv[2] === '--version') process.stdout.write('${version}\\n'); else if (process.argv[2] === 'health') process.stdout.write(JSON.stringify({status:'healthy',renderVerified:true})+'\\n'); else process.exitCode=2;\n`,
     },
   ]);
 
@@ -113,15 +113,15 @@ const fixture = async (overrides: Partial<UpdateManifest> = {}) => {
     releaseId: "release-1",
     sequence: 1,
     channel: "stable",
-    version: "1.1.0",
+    version: "2.1.0",
     publishedAt: "2026-08-08T12:00:00.000Z",
     officialOrigin: configuration.officialOrigin,
-    platform: process.platform as "darwin",
+    platform: process.platform as "darwin" | "win32" | "linux",
     architecture: process.arch as "arm64",
     compatibility: {
-      runtimeApi: { min: 1, max: 1 },
-      workspaceSchema: { min: 1, max: 1 },
-      plugin: { min: "0.0.1", max: "0.0.1" },
+      runtimeApi: { min: 2, max: 2 },
+      workspaceSchema: { min: 2, max: 2 },
+      plugin: { min: "2.0.0", max: "2.0.0" },
     },
     artifact: {
       url: "https://updates.example.test/adr/stable/runtime.tgz",
@@ -140,8 +140,8 @@ const fixture = async (overrides: Partial<UpdateManifest> = {}) => {
     releaseNotes: "Trusted fixture release.",
     migration: {
       required: false,
-      fromWorkspaceSchema: 1,
-      toWorkspaceSchema: 1,
+      fromWorkspaceSchema: 2,
+      toWorkspaceSchema: 2,
       reversible: false,
     },
     ...overrides,
@@ -182,7 +182,7 @@ const fixture = async (overrides: Partial<UpdateManifest> = {}) => {
     new UpdateManager({
       root: path.join(root, "updates"),
       configuration,
-      pluginVersion: "0.0.1",
+      pluginVersion: "2.0.0",
       transport,
       baseline: {
         installPath: baseline,
@@ -213,8 +213,8 @@ describe("trusted runtime updates", () => {
     const manager = setup.manager();
     await expect(manager.check()).resolves.toMatchObject({
       status: "available",
-      version: "1.1.0",
-      pluginVersion: "0.0.1",
+      version: "2.1.0",
+      pluginVersion: "2.0.0",
     });
     expect(
       await stat(path.join(setup.root, "updates")).catch(() => undefined),
@@ -225,17 +225,17 @@ describe("trusted runtime updates", () => {
       status: "staged",
       activated: false,
     });
-    expect((await manager.state()).current?.version).toBe("1.0.2");
-    expect((await manager.state()).staged?.version).toBe("1.1.0");
+    expect((await manager.state()).current?.version).toBe("2.0.0");
+    expect((await manager.state()).staged?.version).toBe("2.1.0");
     await expect(manager.apply()).resolves.toMatchObject({
       status: "applied",
-      version: "1.1.0",
+      version: "2.1.0",
       restartRequired: true,
       pluginContentChanged: false,
     });
     const applied = await manager.state();
-    expect(applied.current?.version).toBe("1.1.0");
-    expect(applied.previous?.version).toBe("1.0.2");
+    expect(applied.current?.version).toBe("2.1.0");
+    expect(applied.previous?.version).toBe("2.0.0");
     expect(applied.staged).toBeUndefined();
     expect(
       await readFile(
@@ -245,7 +245,7 @@ describe("trusted runtime updates", () => {
     ).toContain('"releaseId": "release-1"');
     await expect(manager.rollback()).resolves.toMatchObject({
       status: "rolled-back",
-      version: "1.0.2",
+      version: "2.0.0",
       restartRequired: true,
     });
     expect((await manager.state()).current?.installPath).toBe(setup.baseline);
@@ -304,10 +304,10 @@ describe("trusted runtime updates", () => {
         manifest.platform = process.platform === "darwin" ? "linux" : "darwin";
       },
       (manifest: Omit<UpdateManifest, "signature">) => {
-        manifest.compatibility.runtimeApi = { min: 2, max: 2 };
+        manifest.compatibility.runtimeApi = { min: 3, max: 3 };
       },
       (manifest: Omit<UpdateManifest, "signature">) => {
-        manifest.compatibility.workspaceSchema = { min: 2, max: 2 };
+        manifest.compatibility.workspaceSchema = { min: 3, max: 3 };
       },
     ]) {
       const incompatible = await fixture();
@@ -331,12 +331,12 @@ describe("trusted runtime updates", () => {
         schemaVersion: 1,
         highestSequence: 1,
         current: {
-          version: "1.1.0",
+          version: "2.1.0",
           releaseId: "release-1",
           installPath: path.join(
             updateDirectory,
             "installs",
-            "1.1.0-release-1",
+            "2.1.0-release-1",
           ),
           sequence: 1,
           entrypoint: "design-runtime",
@@ -370,7 +370,7 @@ describe("trusted runtime updates", () => {
       const manager = setup.manager({ healthCheck });
       await manager.fetch();
       await expect(manager.apply()).rejects.toBeTruthy();
-      expect((await manager.state()).current?.version).toBe("1.0.2");
+      expect((await manager.state()).current?.version).toBe("2.0.0");
       const installs = await readdir(
         path.join(setup.root, "updates", "installs"),
       ).catch(() => []);

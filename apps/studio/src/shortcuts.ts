@@ -46,7 +46,12 @@ export const studioShortcutRegistry: readonly StudioShortcut[] = [
     keys: "Mod+Shift+Z",
     when: "canvas",
     matches: (event) =>
-      primary(event) && event.shiftKey && event.key.toLowerCase() === "z",
+      (primary(event) && event.shiftKey && event.key.toLowerCase() === "z") ||
+      (event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === "y"),
     command: () => ({ id: "history.redo" }),
   },
   {

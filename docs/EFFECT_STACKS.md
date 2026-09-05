@@ -82,7 +82,7 @@ Older clients may continue reading and writing the legacy single-shadow form. Th
 
 ## Deliberate limits
 
-V1 does not include bevel/emboss, liquify, arbitrary shader code, raster brush effects, blend modes per effect, or cross-node effect references. Color overlay is solid-only; gradient overlay is linear/radial. Adding a new effect type must update the TypeScript union, Zod schema, Studio editor, renderer switch, tests, and documentation; exhaustive switches fail compilation until handling is complete.
+Ordered shadows, glows, and color/gradient overlays may carry their own blend mode; omitted values retain the historical Normal behavior. Blur remains a source filter rather than a separately blended effect. ADR does not yet include bevel/emboss, liquify, arbitrary shader code, raster brush effects, Blend If tonal gates, knockout/channel exclusion, or cross-node effect references. Color overlay is solid-only; gradient overlay is linear/radial. Adding a new effect type must update the TypeScript union, Zod schema, Studio editor, renderer switch, tests, and documentation; exhaustive switches fail compilation until handling is complete.
 
 ## Rollback
 

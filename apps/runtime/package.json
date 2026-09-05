@@ -1,6 +1,6 @@
 {
   "name": "@tva-agentic-design/runtime",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "private": false,
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -21,10 +21,12 @@
     "README.md"
   ],
   "os": [
-    "darwin"
+    "darwin",
+    "win32"
   ],
   "cpu": [
-    "arm64"
+    "arm64",
+    "x64"
   ],
   "scripts": {
     "build": "tsup src/cli.ts --format esm --platform node --target node22 --clean --out-dir dist && pnpm --filter @tva-agentic-design/studio build && node scripts/copy-studio.mjs",
@@ -42,6 +44,7 @@
     "fastify": "5.10.0",
     "file-type": "22.0.1",
     "fontkit": "2.0.4",
+    "pdf-lib": "1.17.1",
     "playwright": "1.61.1",
     "saxes": "6.0.0",
     "sharp": "0.35.3"

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Agentic Brand System"
+  short_description: "Manage exact-version Brand Libraries"
+  default_prompt: "Use $agentic-brand-system to inspect this project's exact Brand Kit pin and make the requested reviewed Brand change."
+  brand_color: "#315CF5"
+policy:
+  allow_implicit_invocation: true

@@ -47,13 +47,28 @@ function Toolbar({
   const setInspectorOpen = useStudio((state) => state.setInspectorOpen);
   const assetInput = useRef<HTMLInputElement>(null);
   const fontInput = useRef<HTMLInputElement>(null);
+  const [alignReference, setAlignReference] = useState<
+    "selection" | "canvas" | "key"
+  >("selection");
+  const keyNodeId = selection.at(-1);
 
   const run = (command: StudioCommandInvocation) =>
     executeStudioCommand(command);
   const canAlign = isStudioCommandEnabled({
     id: "selection.align",
     mode: "left",
+    relativeTo: alignReference,
+    keyNodeId,
   });
+  const align = (
+    mode: "left" | "center" | "right" | "top" | "middle" | "bottom",
+  ) =>
+    run({
+      id: "selection.align",
+      mode,
+      relativeTo: alignReference,
+      keyNodeId,
+    });
 
   return (
     <header className="toolbar">
@@ -179,59 +194,109 @@ function Toolbar({
           </button>
         </div>
       )}
-      {canAlign && (
-        <div
-          className="tool-cluster arrange-tools"
-          role="group"
-          aria-label="Align and distribute"
-        >
-          <button
-            title="Align left"
-            onClick={() => run({ id: "selection.align", mode: "left" })}
+      {selection.length > 0 && (
+        <details className="align-menu">
+          <summary
+            title="Align and distribute"
+            aria-label="Align and distribute"
           >
-            ⫷<span className="sr-only">Align left</span>
-          </button>
-          <button
-            title="Align centers"
-            onClick={() => run({ id: "selection.align", mode: "center" })}
+            ⇲
+          </summary>
+          <div
+            className="align-menu-panel"
+            role="group"
+            aria-label="Align and distribute controls"
           >
-            ↔<span className="sr-only">Align horizontal centers</span>
-          </button>
-          <button
-            title="Align top"
-            onClick={() => run({ id: "selection.align", mode: "top" })}
-          >
-            ⫯<span className="sr-only">Align top</span>
-          </button>
-          <button
-            disabled={
-              !isStudioCommandEnabled({
-                id: "selection.distribute",
-                axis: "horizontal",
-              })
-            }
-            title="Distribute horizontally"
-            onClick={() =>
-              run({ id: "selection.distribute", axis: "horizontal" })
-            }
-          >
-            ⇥<span className="sr-only">Distribute horizontally</span>
-          </button>
-          <button
-            disabled={
-              !isStudioCommandEnabled({
-                id: "selection.distribute",
-                axis: "vertical",
-              })
-            }
-            title="Distribute vertically"
-            onClick={() =>
-              run({ id: "selection.distribute", axis: "vertical" })
-            }
-          >
-            ⇟<span className="sr-only">Distribute vertically</span>
-          </button>
-        </div>
+            <label className="arrange-reference">
+              <span className="sr-only">Align relative to</span>
+              <select
+                aria-label="Align relative to"
+                value={alignReference}
+                onChange={(event) =>
+                  setAlignReference(
+                    event.currentTarget.value as typeof alignReference,
+                  )
+                }
+              >
+                <option value="selection">Selection</option>
+                <option value="canvas">Canvas</option>
+                <option value="key" disabled={selection.length < 2}>
+                  Key layer
+                </option>
+              </select>
+            </label>
+            <button
+              disabled={!canAlign}
+              title="Align left"
+              onClick={() => align("left")}
+            >
+              ⫷<span className="sr-only">Align left</span>
+            </button>
+            <button
+              disabled={!canAlign}
+              title="Align centers"
+              onClick={() => align("center")}
+            >
+              ↔<span className="sr-only">Align horizontal centers</span>
+            </button>
+            <button
+              disabled={!canAlign}
+              title="Align right"
+              onClick={() => align("right")}
+            >
+              ⫸<span className="sr-only">Align right</span>
+            </button>
+            <button
+              disabled={!canAlign}
+              title="Align top"
+              onClick={() => align("top")}
+            >
+              ⫯<span className="sr-only">Align top</span>
+            </button>
+            <button
+              disabled={!canAlign}
+              title="Align vertical centers"
+              onClick={() => align("middle")}
+            >
+              ↕<span className="sr-only">Align vertical centers</span>
+            </button>
+            <button
+              disabled={!canAlign}
+              title="Align bottom"
+              onClick={() => align("bottom")}
+            >
+              ⫰<span className="sr-only">Align bottom</span>
+            </button>
+            <button
+              disabled={
+                !isStudioCommandEnabled({
+                  id: "selection.distribute",
+                  axis: "horizontal",
+                })
+              }
+              title="Distribute horizontally"
+              onClick={() =>
+                run({ id: "selection.distribute", axis: "horizontal" })
+              }
+            >
+              ⇥<span className="sr-only">Distribute horizontally</span>
+            </button>
+            <button
+              disabled={
+                !isStudioCommandEnabled({
+                  id: "selection.distribute",
+                  axis: "vertical",
+                })
+              }
+              title="Distribute vertically"
+              onClick={() =>
+                run({ id: "selection.distribute", axis: "vertical" })
+              }
+            >
+              ⇟<span className="sr-only">Distribute vertically</span>
+            </button>
+          </div>
+        </details>
       )}
       <div className="tool-spacer" />
       <input

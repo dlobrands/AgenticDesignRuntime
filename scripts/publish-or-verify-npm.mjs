@@ -54,5 +54,7 @@ for (const [packageName, archivePrefix] of packages) {
   });
   if (publish.status !== 0)
     throw new Error(`${spec} publication failed with exit ${publish.status}.`);
-  process.stdout.write(`${spec}: published through npm OIDC\n`);
+  process.stdout.write(
+    `${spec}: published and awaiting registry verification\n`,
+  );
 }

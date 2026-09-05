@@ -8,6 +8,7 @@ import {
   assertNever,
   createBaselineEntry,
   compileBrandRevisionMigration,
+  compileDesignVariant,
   createFrameDocument,
   listNodes,
   resizeFrameDocument,
@@ -578,7 +579,7 @@ export const simulateProjectOperations = async (input: {
             "Duplicate frame slug or ID is already reserved.",
           );
         }
-        const duplicate = operation.resize
+        let duplicate = operation.resize
           ? resizeFrameDocument({
               frame: source,
               width: operation.resize.width,
@@ -592,6 +593,42 @@ export const simulateProjectOperations = async (input: {
         duplicate.revision = 0;
         duplicate.createdAt = input.now;
         duplicate.updatedAt = input.now;
+        if (operation.variant) {
+          const plan = document.designPlans?.find(
+            (candidate) => candidate.id === operation.variant!.planId,
+          );
+          if (!plan)
+            throw new RuntimeError(
+              "INVALID_OPERATION",
+              `Design plan ${operation.variant.planId} was not found.`,
+            );
+          const compilation = compileDesignVariant({
+            plan: { ...structuredClone(plan), targetFrameId: duplicate.id },
+            frame: duplicate,
+            variantRuleId: operation.variant.variantRuleId,
+          });
+          const blocking = compilation.warnings.filter(
+            (warning) =>
+              warning.severity === "warning" &&
+              warning.code !== "PLAN_NOT_APPROVED",
+          );
+          if (blocking.length)
+            throw new RuntimeError(
+              "INVALID_OPERATION",
+              "Cross-format variant has unresolved required intent; no frame was created.",
+              { warnings: blocking },
+            );
+          if (compilation.operations.length)
+            duplicate = simulateFrameOperations(
+              duplicate,
+              compilation.operations,
+              {
+                validation: { assets: assets.assets, fonts: fonts.fonts },
+                nextRevision: 0,
+                now: input.now,
+              },
+            ).frame;
+        }
         frames.set(duplicate.id, duplicate);
         document.frames.push({
           id: duplicate.id,
@@ -689,6 +726,20 @@ export const simulateProjectOperations = async (input: {
           ? []
           : [{ kind: "removeFont", fontId: operation.font.id }];
         label = `Imported “${operation.font.family}”`;
+        break;
+      }
+      case "importColorProfile": {
+        const profiles = document.colorProfiles ?? [];
+        const duplicate = profiles.find(
+          (profile) => profile.hash === operation.profile.hash,
+        );
+        if (!duplicate)
+          document.colorProfiles = [
+            ...profiles,
+            structuredClone(operation.profile),
+          ];
+        inverse = [];
+        label = `Imported color profile “${operation.profile.name}”`;
         break;
       }
       case "removeFont": {

@@ -1,10 +1,10 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import {
-  GROUP_BLEND_MODES,
   SUPPORTED_BLEND_MODES,
   effectItems,
   findNode,
   descendantIds,
+  compileLayoutContainer,
   listNodes,
   reconcileTextSpans,
   type GradientStop,
@@ -14,6 +14,8 @@ import {
   type FrameDocument,
   type FrameResizeStrategy,
   type ResizeConstraints,
+  type GroupNode,
+  type LayoutContainer,
   type ShapeFill,
   type Stroke,
   type VectorPathCommand,
@@ -192,6 +194,85 @@ function SelectField({
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+const blendGroups = [
+  ["Normal", ["normal", "dissolve"]],
+  [
+    "Darken",
+    ["darken", "multiply", "color-burn", "linear-burn", "darker-color"],
+  ],
+  [
+    "Lighten",
+    ["lighten", "screen", "color-dodge", "linear-dodge", "lighter-color"],
+  ],
+  [
+    "Contrast",
+    [
+      "overlay",
+      "soft-light",
+      "hard-light",
+      "vivid-light",
+      "linear-light",
+      "pin-light",
+      "hard-mix",
+    ],
+  ],
+  ["Comparison", ["difference", "exclusion", "subtract", "divide"]],
+  ["Component", ["hue", "saturation", "color", "luminosity"]],
+] as const;
+
+function BlendModeField({
+  value,
+  group,
+  preview,
+  commit,
+  cancel,
+}: {
+  value: string;
+  group: boolean;
+  preview: (value: string) => void;
+  commit: (value: string) => void;
+  cancel: () => void;
+}) {
+  const cancelling = useRef(false);
+  return (
+    <label className="field field-wide">
+      <span>Blend mode</span>
+      <select
+        key={value}
+        defaultValue={value}
+        onChange={(event) => preview(event.currentTarget.value)}
+        onBlur={(event) => {
+          if (cancelling.current) {
+            cancelling.current = false;
+            return;
+          }
+          commit(event.currentTarget.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          cancelling.current = true;
+          event.currentTarget.value = value;
+          cancel();
+          event.currentTarget.blur();
+        }}
+      >
+        {group && <option value="pass-through">Pass through</option>}
+        {blendGroups.map(([label, modes]) => (
+          <optgroup key={label} label={label}>
+            {modes.map((mode) => (
+              <option key={mode} value={mode}>
+                {mode}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <small>Arrow to preview. Click away to save once; Escape cancels.</small>
     </label>
   );
 }
@@ -637,6 +718,7 @@ function Properties({ node }: { node?: SceneNode }) {
   const assets = useStudio((state) => state.assets.assets);
   const fonts = useStudio((state) => state.fonts.fonts);
   const commit = useStudio((state) => state.commit);
+  const previewOperations = useStudio((state) => state.previewOperations);
   const requestCropEdit = useStudio((state) => state.requestCropEdit);
   const setDraftOperations = useStudio((state) => state.setDraftOperations);
   const commitDraftOperations = useStudio(
@@ -827,6 +909,12 @@ function Properties({ node }: { node?: SceneNode }) {
               constraints are retained for future container reflow.
             </p>
           </Section>
+          {node.type === "group" ? (
+            <LayoutContainerSection
+              node={node}
+              previewOperations={previewOperations}
+            />
+          ) : null}
         </>
       )}
       {"opacity" in node && "blendMode" in node && (
@@ -839,13 +927,22 @@ function Properties({ node }: { node?: SceneNode }) {
             step={0.05}
             onCommit={(opacity) => update("compositing", { opacity })}
           />
-          <SelectField
-            label="Blend"
+          {node.type !== "group" && (
+            <NumberField
+              label="Fill opacity"
+              value={node.fillOpacity ?? 1}
+              min={0}
+              max={1}
+              step={0.05}
+              onCommit={(fillOpacity) => update("compositing", { fillOpacity })}
+            />
+          )}
+          <BlendModeField
             value={node.blendMode}
-            options={
-              node.type === "group" ? GROUP_BLEND_MODES : SUPPORTED_BLEND_MODES
-            }
-            onCommit={(blendMode) => update("compositing", { blendMode })}
+            group={node.type === "group"}
+            preview={(blendMode) => preview("compositing", { blendMode })}
+            commit={(blendMode) => commitLive("compositing", { blendMode })}
+            cancel={cancelLive}
           />
         </Section>
       )}
@@ -948,6 +1045,17 @@ function Properties({ node }: { node?: SceneNode }) {
               value={node.typography.alignment}
               options={["left", "center", "right", "justify"]}
               onCommit={(alignment) => update("typography", { alignment })}
+            />
+            <SelectField
+              label="Direction"
+              value={node.typography.direction ?? "auto"}
+              options={["auto", "ltr", "rtl"]}
+              onCommit={(direction) => update("typography", { direction })}
+            />
+            <TextField
+              label="Language"
+              value={node.typography.language ?? "en"}
+              onCommit={(language) => update("typography", { language })}
             />
             <SelectField
               label="Vertical align"
@@ -1250,6 +1358,135 @@ function Properties({ node }: { node?: SceneNode }) {
   );
 }
 
+function LayoutContainerSection({
+  node,
+  previewOperations,
+}: {
+  node: GroupNode;
+  previewOperations: (operations: FrameOperation[]) => Promise<void>;
+}) {
+  const [layout, setLayout] = useState<LayoutContainer>(
+    node.layout ?? {
+      direction: "row",
+      gap: 16,
+      padding: { top: 16, right: 16, bottom: 16, left: 16 },
+      align: "start",
+      distribution: "start",
+      wrap: false,
+    },
+  );
+  const preview = useStudio((state) => state.preview);
+  const commitPreview = useStudio((state) => state.commitPreview);
+  const discardPreview = useStudio((state) => state.discardPreview);
+  const compilation = compileLayoutContainer(node, layout);
+  return (
+    <Section title="Layout container">
+      <div className="field-grid">
+        <SelectField
+          label="Direction"
+          value={layout.direction}
+          options={[
+            { value: "row", label: "Row" },
+            { value: "column", label: "Column" },
+          ]}
+          onCommit={(direction) =>
+            setLayout({
+              ...layout,
+              direction: direction as LayoutContainer["direction"],
+            })
+          }
+        />
+        <NumberField
+          label="Gap"
+          value={layout.gap}
+          min={0}
+          onCommit={(gap) => setLayout({ ...layout, gap })}
+        />
+        <SelectField
+          label="Align"
+          value={layout.align}
+          options={["start", "center", "end", "stretch"]}
+          onCommit={(align) =>
+            setLayout({ ...layout, align: align as LayoutContainer["align"] })
+          }
+        />
+        <SelectField
+          label="Distribution"
+          value={layout.distribution}
+          options={["start", "center", "end", "space-between"]}
+          onCommit={(distribution) =>
+            setLayout({
+              ...layout,
+              distribution: distribution as LayoutContainer["distribution"],
+            })
+          }
+        />
+      </div>
+      <div className="field-grid">
+        {(["top", "right", "bottom", "left"] as const).map((side) => (
+          <NumberField
+            key={side}
+            label={side}
+            value={layout.padding[side]}
+            min={0}
+            onCommit={(value) =>
+              setLayout({
+                ...layout,
+                padding: { ...layout.padding, [side]: value },
+              })
+            }
+          />
+        ))}
+      </div>
+      <Toggle
+        label="Wrap"
+        value={layout.wrap}
+        onCommit={(wrap) => setLayout({ ...layout, wrap })}
+      />
+      {compilation.warnings.map((warning) => (
+        <p className="advanced-disclosure" key={warning.code}>
+          {warning.message}
+        </p>
+      ))}
+      <div className="button-row">
+        <button
+          type="button"
+          onClick={() => void previewOperations(compilation.operations)}
+        >
+          Preview layout
+        </button>
+        {node.layout ? (
+          <button
+            type="button"
+            onClick={() =>
+              void previewOperations([
+                {
+                  kind: "updateNode",
+                  nodeId: node.id,
+                  propertyGroup: "layout",
+                  value: { layout: null },
+                },
+              ])
+            }
+          >
+            Preview detach
+          </button>
+        ) : null}
+      </div>
+      {preview ? (
+        <div className="button-row">
+          <button type="button" onClick={() => void commitPreview()}>
+            Commit reviewed layout
+          </button>
+          <button type="button" onClick={discardPreview}>
+            Discard layout preview
+          </button>
+        </div>
+      ) : null}
+    </Section>
+  );
+}
+
 const vectorPoint = (x: number, y: number) => ({
   x: Math.max(0, Math.min(1, x)),
   y: Math.max(0, Math.min(1, y)),
@@ -1292,11 +1529,11 @@ function VectorPathSection({
         command,
       ): command is Extract<
         VectorPathCommand,
-        { kind: "move" | "line" | "cubic" }
+        { kind: "move" | "line" | "cubic" | "quadratic" | "arc" }
       > => command.kind !== "close",
     )?.to ?? { x: 0.5, y: 0.5 };
   const drawableCount = node.commands.filter(
-    (command) => command.kind === "line" || command.kind === "cubic",
+    (command) => command.kind !== "move" && command.kind !== "close",
   ).length;
   const insertBeforeClose = (command: VectorPathCommand) => {
     const commands = structuredClone(node.commands);
@@ -1399,6 +1636,89 @@ function VectorPathSection({
                       ])}
                     </>
                   )}
+                  {command.kind === "quadratic" && (
+                    <>
+                      <NumberField
+                        label="Control X"
+                        value={command.control.x}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        onCommit={(x) =>
+                          replaceCommand(command.id, {
+                            ...command,
+                            control: vectorPoint(x, command.control.y),
+                          })
+                        }
+                      />
+                      <NumberField
+                        label="Control Y"
+                        value={command.control.y}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        onCommit={(y) =>
+                          replaceCommand(command.id, {
+                            ...command,
+                            control: vectorPoint(command.control.x, y),
+                          })
+                        }
+                      />
+                    </>
+                  )}
+                  {command.kind === "arc" && (
+                    <>
+                      <NumberField
+                        label="Radius X"
+                        value={command.radius.x}
+                        min={0.001}
+                        max={1}
+                        step={0.01}
+                        onCommit={(x) =>
+                          replaceCommand(command.id, {
+                            ...command,
+                            radius: { ...command.radius, x },
+                          })
+                        }
+                      />
+                      <NumberField
+                        label="Radius Y"
+                        value={command.radius.y}
+                        min={0.001}
+                        max={1}
+                        step={0.01}
+                        onCommit={(y) =>
+                          replaceCommand(command.id, {
+                            ...command,
+                            radius: { ...command.radius, y },
+                          })
+                        }
+                      />
+                      <NumberField
+                        label="Rotation"
+                        value={command.rotation}
+                        min={-360}
+                        max={360}
+                        onCommit={(rotation) =>
+                          replaceCommand(command.id, { ...command, rotation })
+                        }
+                      />
+                      <Toggle
+                        label="Large arc"
+                        value={command.largeArc}
+                        onCommit={(largeArc) =>
+                          replaceCommand(command.id, { ...command, largeArc })
+                        }
+                      />
+                      <Toggle
+                        label="Sweep"
+                        value={command.sweep}
+                        onCommit={(sweep) =>
+                          replaceCommand(command.id, { ...command, sweep })
+                        }
+                      />
+                    </>
+                  )}
                 </div>
               )}
             </li>
@@ -1436,6 +1756,35 @@ function VectorPathSection({
           </button>
           <button
             className="subtle-button"
+            onClick={() =>
+              insertBeforeClose({
+                id: crypto.randomUUID(),
+                kind: "quadratic",
+                control: vectorPoint(lastEndpoint.x + 0.05, lastEndpoint.y),
+                to: vectorPoint(lastEndpoint.x + 0.1, lastEndpoint.y + 0.1),
+              })
+            }
+          >
+            Add quadratic point
+          </button>
+          <button
+            className="subtle-button"
+            onClick={() =>
+              insertBeforeClose({
+                id: crypto.randomUUID(),
+                kind: "arc",
+                radius: { x: 0.1, y: 0.1 },
+                rotation: 0,
+                largeArc: false,
+                sweep: true,
+                to: vectorPoint(lastEndpoint.x + 0.1, lastEndpoint.y + 0.1),
+              })
+            }
+          >
+            Add arc point
+          </button>
+          <button
+            className="subtle-button"
             disabled={node.commands.at(-1)?.kind === "close"}
             onClick={() =>
               setCommands([
@@ -1449,6 +1798,20 @@ function VectorPathSection({
         </div>
       </Section>
       <Section title="Fill" open>
+        <SelectField
+          label="Fill rule"
+          value={node.fillRule ?? "nonzero"}
+          options={[
+            { value: "nonzero", label: "Nonzero" },
+            { value: "evenodd", label: "Even-odd" },
+          ]}
+          onCommit={(fillRule) =>
+            update("vectorPath", {
+              commands: node.commands,
+              fillRule,
+            })
+          }
+        />
         <Toggle
           label="Enabled"
           value={Boolean(node.fill)}
@@ -1604,6 +1967,7 @@ const newEffect = (type: Effect["type"]): Effect => {
         spread: 0,
         color: "#000000",
         opacity: type === "outerShadow" ? 0.35 : 0.45,
+        blendMode: "multiply",
       };
     case "blur":
       return { ...base, type, radius: 8 };
@@ -1616,6 +1980,7 @@ const newEffect = (type: Effect["type"]): Effect => {
         spread: 0,
         color: type === "outerGlow" ? "#315BFF" : "#FFFFFF",
         opacity: 0.45,
+        blendMode: "screen",
       };
     case "colorOverlay":
       return {
@@ -1623,6 +1988,7 @@ const newEffect = (type: Effect["type"]): Effect => {
         type,
         paint: { type: "solid", color: "#315BFF", opacity: 1 },
         opacity: 0.5,
+        blendMode: "normal",
       };
     case "gradientOverlay":
       return {
@@ -1633,6 +1999,7 @@ const newEffect = (type: Effect["type"]): Effect => {
           { type: "linearGradient" | "radialGradient" }
         >,
         opacity: 0.5,
+        blendMode: "normal",
       };
   }
 };
@@ -1731,6 +2098,19 @@ function EffectsSection({
                 }))
               }
             />
+            {effect.type !== "blur" && (
+              <SelectField
+                label="Effect blend"
+                value={effect.blendMode ?? "normal"}
+                options={SUPPORTED_BLEND_MODES}
+                onCommit={(blendMode) =>
+                  replace(
+                    effect.id,
+                    (candidate) => ({ ...candidate, blendMode }) as Effect,
+                  )
+                }
+              />
+            )}
             <div className="effect-actions">
               <button
                 className="subtle-button"

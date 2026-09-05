@@ -1,10 +1,17 @@
 #!/usr/bin/env node
+import { runtimeHealth } from "./health.js";
+import { assertSupportedPlatform } from "../../../scripts/platform.mjs";
 import { fileURLToPath } from "node:url";
 import { realpathSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { chromium, type BrowserContext } from "playwright";
-import { RuntimeError } from "@tva-agentic-design/core";
+import {
+  RuntimeError,
+  SUPPORTED_BLEND_MODES,
+  compileArrangeOperations,
+  type FrameDocument,
+} from "@tva-agentic-design/core";
 import { RuntimeEventBus } from "./events.js";
 import { recoverJournals } from "./journal.js";
 import { RuntimeLogger, RuntimeMetrics } from "./logger.js";
@@ -19,12 +26,19 @@ import {
 import { rememberWorkspace } from "./preferences.js";
 import {
   openRuntimeStudio,
+  descriptorForWorkspace,
+  runtimeRequest,
   runtimeStatus,
   startRuntimeDetached,
   stopRuntime,
 } from "./lifecycle.js";
 import { PRODUCT_VERSION } from "./version.js";
 import { UpdateManager } from "./update-manager.js";
+import {
+  commitWorkspaceMigration,
+  inspectWorkspaceMigration,
+  rollbackWorkspaceMigration,
+} from "./schema-migration.js";
 
 type CliOptions = {
   workspacePath: string;
@@ -34,16 +48,49 @@ type CliOptions = {
 };
 
 const usage = `Usage:
+  design-runtime health --json
   design-runtime dev <workspace-path> [--no-open] [--port <number>] [--log-level debug|info|warn|error|fatal]
   design-runtime start <workspace-path> [--no-open] [--port <number|auto>]
   design-runtime status <workspace-path>
   design-runtime studio <workspace-path>
   design-runtime stop <workspace-path>
+  design-runtime workspace migration inspect <workspace-path>
+  design-runtime workspace migration preview <workspace-path>
+  design-runtime workspace migration commit <workspace-path>
+  design-runtime workspace migration rollback <workspace-path>
   design-runtime update check
   design-runtime update fetch
   design-runtime update apply
   design-runtime update rollback
   design-runtime diagnostics export [workspace-path]`;
+
+const editUsage = `Editing commands (preview-first):
+  design-runtime layer compositing <workspace> --project <id> --frame <id> --base-revision <n> --nodes <id,id> [--blend-mode <mode>] [--opacity <0..1>] [--fill-opacity <0..1>]
+  design-runtime layer arrange <workspace> --project <id> --frame <id> --base-revision <n> --nodes <id,id> --action <action> [--relative-to selection|canvas|key] [--key-node <id>]
+  design-runtime preview commit <workspace> <preview-id>`;
+
+const editOptions = (arguments_: string[]) => {
+  const option = (name: string): string | undefined => {
+    const index = arguments_.indexOf(name);
+    return index >= 0 ? arguments_[index + 1] : undefined;
+  };
+  const required = (name: string): string => {
+    const value = option(name);
+    if (!value) throw new Error(`${name} is required.\n${editUsage}`);
+    return value;
+  };
+  const baseRevision = Number(required("--base-revision"));
+  if (!Number.isInteger(baseRevision) || baseRevision < 0)
+    throw new Error("--base-revision must be a non-negative integer.");
+  return {
+    projectId: required("--project"),
+    frameId: required("--frame"),
+    baseRevision,
+    nodeIds: required("--nodes").split(",").filter(Boolean),
+    actorId: option("--actor-id") ?? "design-runtime-cli",
+    option,
+  };
+};
 
 const truthyEnvironment = (value: string | undefined): boolean =>
   value === "1" || value?.toLowerCase() === "true";
@@ -126,18 +173,148 @@ const existingDirectory = async (candidates: string[]): Promise<string> => {
 export const runCli = async (
   arguments_ = process.argv.slice(2),
 ): Promise<void> => {
+  if (process.platform === "win32" || process.platform === "darwin")
+    assertSupportedPlatform();
+  if (arguments_[0] === "health") {
+    const currentFile = fileURLToPath(import.meta.url);
+    const studio = await existingDirectory([
+      path.resolve(path.dirname(currentFile), "../studio"),
+      path.resolve(path.dirname(currentFile), "../../studio/dist"),
+    ]);
+    process.stdout.write(`${JSON.stringify(await runtimeHealth(studio))}\n`);
+    return;
+  }
   if (arguments_.includes("--version")) {
     process.stdout.write(`${PRODUCT_VERSION}\n`);
     return;
   }
   if (arguments_.includes("--help") || arguments_.includes("-h")) {
-    process.stdout.write(`${usage}\n`);
+    process.stdout.write(`${usage}\n\n${editUsage}\n`);
+    return;
+  }
+  if (arguments_[0] === "preview" && arguments_[1] === "commit") {
+    const workspacePath = arguments_[2];
+    const previewId = arguments_[3];
+    if (!workspacePath || !previewId) throw new Error(editUsage);
+    const descriptor = await descriptorForWorkspace(workspacePath);
+    if (!descriptor)
+      throw new Error("No active runtime matches this workspace.");
+    const result = await runtimeRequest(
+      descriptor,
+      `/api/previews/${encodeURIComponent(previewId)}/commit`,
+      { method: "POST" },
+    );
+    process.stdout.write(`${JSON.stringify(result)}\n`);
+    return;
+  }
+  if (
+    arguments_[0] === "layer" &&
+    ["compositing", "arrange"].includes(arguments_[1] ?? "")
+  ) {
+    const command = arguments_[1]!;
+    const workspacePath = arguments_[2];
+    if (!workspacePath) throw new Error(editUsage);
+    const input = editOptions(arguments_.slice(3));
+    const descriptor = await descriptorForWorkspace(workspacePath);
+    if (!descriptor)
+      throw new Error("No active runtime matches this workspace.");
+    let operations;
+    if (command === "compositing") {
+      const blendMode = input.option("--blend-mode");
+      if (
+        blendMode &&
+        !(SUPPORTED_BLEND_MODES as readonly string[]).includes(blendMode)
+      )
+        throw new Error(`Unsupported blend mode: ${blendMode}`);
+      const opacity = input.option("--opacity");
+      const fillOpacity = input.option("--fill-opacity");
+      const numeric = [opacity, fillOpacity]
+        .filter((value): value is string => value !== undefined)
+        .map(Number);
+      if (
+        numeric.some(
+          (value) => !Number.isFinite(value) || value < 0 || value > 1,
+        )
+      )
+        throw new Error("Opacity values must be between 0 and 1.");
+      if (!blendMode && opacity === undefined && fillOpacity === undefined)
+        throw new Error("Provide at least one compositing change.");
+      operations = input.nodeIds.map((nodeId) => ({
+        kind: "updateNode" as const,
+        nodeId,
+        propertyGroup: "compositing" as const,
+        value: {
+          ...(blendMode ? { blendMode } : {}),
+          ...(opacity !== undefined ? { opacity: Number(opacity) } : {}),
+          ...(fillOpacity !== undefined
+            ? { fillOpacity: Number(fillOpacity) }
+            : {}),
+        },
+      }));
+    } else {
+      const action = input.option("--action");
+      if (!action) throw new Error("--action is required.\n" + editUsage);
+      const frame = await runtimeRequest<FrameDocument>(
+        descriptor,
+        `/api/projects/${input.projectId}/frames/${input.frameId}`,
+      );
+      operations = compileArrangeOperations({
+        frame,
+        nodeIds: input.nodeIds,
+        action: action as Parameters<
+          typeof compileArrangeOperations
+        >[0]["action"],
+        relativeTo: input.option("--relative-to") as
+          | Parameters<typeof compileArrangeOperations>[0]["relativeTo"]
+          | undefined,
+        keyNodeId: input.option("--key-node"),
+      });
+    }
+    const result = await runtimeRequest(descriptor, "/api/transactions", {
+      method: "POST",
+      body: JSON.stringify({
+        schemaVersion: 1,
+        mode: "preview",
+        runtimeId: descriptor.runtimeId,
+        workspaceId: descriptor.workspaceId,
+        actor: { source: "http", id: input.actorId },
+        renderPreview: true,
+        scope: {
+          kind: "frame",
+          projectId: input.projectId,
+          frameId: input.frameId,
+        },
+        baseRevision: input.baseRevision,
+        operations,
+      }),
+    });
+    process.stdout.write(`${JSON.stringify(result)}\n`);
     return;
   }
   if (arguments_[0] === "diagnostics" && arguments_[1] === "export") {
     const workspace = await resolveDiagnosticsWorkspace(arguments_[2]);
     const result = await exportDiagnostics(workspace);
     process.stdout.write(`${JSON.stringify(result)}\n`);
+    return;
+  }
+  if (arguments_[0] === "workspace" && arguments_[1] === "migration") {
+    const action = arguments_[2];
+    const workspacePath = arguments_[3];
+    if (
+      !workspacePath ||
+      !action ||
+      !["inspect", "preview", "commit", "rollback"].includes(action)
+    )
+      throw new Error(usage);
+    const result =
+      action === "commit"
+        ? await commitWorkspaceMigration(workspacePath)
+        : action === "rollback"
+          ? await rollbackWorkspaceMigration(workspacePath)
+          : await inspectWorkspaceMigration(workspacePath);
+    process.stdout.write(
+      `${JSON.stringify({ ...result, mode: action === "preview" ? "preview" : action })}\n`,
+    );
     return;
   }
   if (arguments_[0] === "update") {

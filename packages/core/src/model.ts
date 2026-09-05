@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1 as const;
+export const SCHEMA_VERSION = 2 as const;
 
 export const SUPPORTED_BLEND_MODES = [
   "normal",
@@ -109,6 +109,15 @@ export type SafeAreaInsets = {
 export type ResizeConstraints = {
   horizontal: "left" | "center" | "right" | "stretch" | "scale";
   vertical: "top" | "middle" | "bottom" | "stretch" | "scale";
+};
+
+export type LayoutContainer = {
+  direction: "row" | "column";
+  gap: number;
+  padding: { top: number; right: number; bottom: number; left: number };
+  align: "start" | "center" | "end" | "stretch";
+  distribution: "start" | "center" | "end" | "space-between";
+  wrap: boolean;
 };
 
 export type BrandBindableProperty =
@@ -237,6 +246,11 @@ export type DesignBrief = {
     scale: number;
     quality?: number;
     matteColor?: string;
+    svgMode?: "vectorOnly" | "hybrid";
+    dpi?: number;
+    outputIccProfileId?: string;
+    bleedMm?: number;
+    cropMarks?: boolean;
     transparentBackground: "required" | "allowed" | "forbidden";
   }>;
   createdAt: string;
@@ -457,25 +471,29 @@ export type EffectBase<TType extends string> = {
   enabled: boolean;
 };
 
+export type BlendedEffect = { blendMode?: SupportedBlendMode };
+
 export type OuterShadowEffect = EffectBase<"outerShadow"> &
-  Omit<OuterShadow, "enabled">;
+  Omit<OuterShadow, "enabled"> &
+  BlendedEffect;
 export type InnerShadowEffect = EffectBase<"innerShadow"> &
-  Omit<OuterShadow, "enabled">;
+  Omit<OuterShadow, "enabled"> &
+  BlendedEffect;
 export type BlurEffect = EffectBase<"blur"> & { radius: number };
 export type GlowEffect = EffectBase<"innerGlow" | "outerGlow"> & {
   blur: number;
   spread: number;
   color: string;
   opacity: number;
-};
+} & BlendedEffect;
 export type ColorOverlayEffect = EffectBase<"colorOverlay"> & {
   paint: SolidFill;
   opacity: number;
-};
+} & BlendedEffect;
 export type GradientOverlayEffect = EffectBase<"gradientOverlay"> & {
   paint: LinearGradientFill | RadialGradientFill;
   opacity: number;
-};
+} & BlendedEffect;
 export type Effect =
   | OuterShadowEffect
   | InnerShadowEffect
@@ -515,6 +533,7 @@ export type BaseNode = {
 export type CompositingProperties<TBlend extends string = SupportedBlendMode> =
   {
     opacity: number;
+    fillOpacity?: number;
     blendMode: TBlend;
     effects?: Effects;
   };
@@ -522,6 +541,7 @@ export type CompositingProperties<TBlend extends string = SupportedBlendMode> =
 export type GroupNode = BaseNode &
   CompositingProperties<GroupBlendMode> & {
     type: "group";
+    layout?: LayoutContainer;
     children: SceneNode[];
   };
 
@@ -565,6 +585,9 @@ export type TextNode = BaseNode &
       letterSpacing: number;
       alignment: "left" | "center" | "right" | "justify";
       verticalAlignment: "top" | "middle" | "bottom";
+      direction?: "auto" | "ltr" | "rtl";
+      language?: string;
+      fontFeatures?: string[];
       color: string;
       opacity: number;
     };
@@ -611,12 +634,28 @@ export type VectorPathCommand =
       control2: VectorPathPoint;
       to: VectorPathPoint;
     }
+  | {
+      id: string;
+      kind: "quadratic";
+      control: VectorPathPoint;
+      to: VectorPathPoint;
+    }
+  | {
+      id: string;
+      kind: "arc";
+      radius: VectorPathPoint;
+      rotation: number;
+      largeArc: boolean;
+      sweep: boolean;
+      to: VectorPathPoint;
+    }
   | { id: string; kind: "close" };
 
 export type VectorPathNode = BaseNode &
   CompositingProperties & {
     type: "vectorPath";
     commands: VectorPathCommand[];
+    fillRule?: "nonzero" | "evenodd";
     fill?: ShapeFill;
     stroke?: Stroke;
   };
@@ -690,7 +729,7 @@ export type RootGroup = {
 };
 
 export type FrameDocument = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   id: string;
   slug: string;
   name: string;
@@ -727,7 +766,7 @@ export type RenderProfile = {
   textRenderer: "canvas";
 };
 
-export const EXPORT_FORMATS = ["png", "jpeg", "webp"] as const;
+export const EXPORT_FORMATS = ["png", "jpeg", "webp", "svg", "pdf"] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
 export type ExportSettings = {
@@ -735,6 +774,11 @@ export type ExportSettings = {
   scale: number;
   quality?: number;
   matteColor?: string;
+  svgMode?: "vectorOnly" | "hybrid";
+  dpi?: number;
+  outputIccProfileId?: string;
+  bleedMm?: number;
+  cropMarks?: boolean;
 };
 
 export type ExportPreset = ExportSettings & {
@@ -742,8 +786,19 @@ export type ExportPreset = ExportSettings & {
   name: string;
 };
 
+export type ColorProfileRecord = {
+  id: string;
+  name: string;
+  path: string;
+  mimeType: "application/vnd.iccprofile";
+  hash: string;
+  sizeBytes: number;
+  colorSpace: "cmyk";
+  licenseNotes: string;
+};
+
 export type ProjectDocument = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   id: string;
   slug: string;
   name: string;
@@ -754,6 +809,7 @@ export type ProjectDocument = {
   frameOrder: string[];
   renderProfile: RenderProfile;
   exportPresets?: ExportPreset[];
+  colorProfiles?: ColorProfileRecord[];
   templates?: ProjectTemplateDefinition[];
   designBriefs?: DesignBrief[];
   designPlans?: DesignPlan[];
@@ -789,7 +845,7 @@ export type SvgAsset = {
 };
 
 export type Asset = RasterAsset | SvgAsset;
-export type AssetManifest = { schemaVersion: 1; assets: Asset[] };
+export type AssetManifest = { schemaVersion: 1 | 2; assets: Asset[] };
 
 export type FontRecord = {
   id: string;
@@ -803,10 +859,10 @@ export type FontRecord = {
   licenseNotes: string;
 };
 
-export type FontManifest = { schemaVersion: 1; fonts: FontRecord[] };
+export type FontManifest = { schemaVersion: 1 | 2; fonts: FontRecord[] };
 
 export type DesignConfig = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   workspaceId: string;
   server: { host: string; port: number; allowLan: boolean };
   rasterLimits: {

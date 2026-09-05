@@ -9,6 +9,7 @@ import {
   BrandComponentInstanceMetadataSchema,
   CanvasGuideSchema,
   CanvasSpacingBindingSchema,
+  ColorProfileRecordSchema,
   DesignBriefSchema,
   DesignPlanSchema,
   EffectsSchema,
@@ -17,6 +18,7 @@ import {
   FontRecordSchema,
   MaskSourceNodeSchema,
   ResizeConstraintsSchema,
+  LayoutContainerSchema,
   ProjectTemplateDefinitionSchema,
   SceneNodeSchema,
   ShapeFillSchema,
@@ -128,6 +130,10 @@ export const DuplicateFrameOperationSchema = z
       })
       .strict()
       .optional(),
+    variant: z
+      .object({ planId: uuid, variantRuleId: uuid })
+      .strict()
+      .optional(),
   })
   .strict();
 export const RenameFrameOperationSchema = z
@@ -234,6 +240,13 @@ export const UpdateNodeOperationSchema = z.discriminatedUnion("propertyGroup", [
   z
     .object({
       ...updateBase,
+      propertyGroup: z.literal("layout"),
+      value: z.object({ layout: LayoutContainerSchema.nullable() }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...updateBase,
       propertyGroup: z.literal("templateMetadata"),
       value: z
         .object({
@@ -306,6 +319,7 @@ export const UpdateNodeOperationSchema = z.discriminatedUnion("propertyGroup", [
       value: z
         .object({
           opacity: opacity.optional(),
+          fillOpacity: opacity.optional(),
           blendMode: z.string().optional(),
         })
         .strict(),
@@ -337,6 +351,15 @@ export const UpdateNodeOperationSchema = z.discriminatedUnion("propertyGroup", [
           letterSpacing: finite.optional(),
           alignment: z.enum(["left", "center", "right", "justify"]).optional(),
           verticalAlignment: z.enum(["top", "middle", "bottom"]).optional(),
+          direction: z.enum(["auto", "ltr", "rtl"]).optional(),
+          language: z
+            .string()
+            .regex(/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/)
+            .optional(),
+          fontFeatures: z
+            .array(z.string().regex(/^[A-Za-z0-9]{4}$/))
+            .max(32)
+            .optional(),
           color: z
             .string()
             .regex(/^#[0-9a-fA-F]{6}$/)
@@ -387,6 +410,7 @@ export const UpdateNodeOperationSchema = z.discriminatedUnion("propertyGroup", [
             .min(2)
             .max(1024)
             .optional(),
+          fillRule: z.enum(["nonzero", "evenodd"]).nullable().optional(),
         })
         .strict(),
     })
@@ -452,6 +476,12 @@ export const ReplaceAssetOperationSchema = z
   .strict();
 export const ImportFontOperationSchema = z
   .object({ kind: z.literal("importFont"), font: FontRecordSchema })
+  .strict();
+export const ImportColorProfileOperationSchema = z
+  .object({
+    kind: z.literal("importColorProfile"),
+    profile: ColorProfileRecordSchema,
+  })
   .strict();
 export const RemoveFontOperationSchema = z
   .object({ kind: z.literal("removeFont"), fontId: uuid })
@@ -567,6 +597,7 @@ export const ProjectOperationSchema = z.union([
   DeleteFrameOperationSchema,
   ImportAssetOperationSchema,
   ImportFontOperationSchema,
+  ImportColorProfileOperationSchema,
   RemoveFontOperationSchema,
   PinBrandKitOperationSchema,
   MigrateBrandKitOperationSchema,
@@ -627,6 +658,7 @@ export const PROJECT_OPERATION_KINDS = [
   "deleteFrame",
   "importAsset",
   "importFont",
+  "importColorProfile",
   "removeFont",
   "pinBrandKit",
   "migrateBrandKit",

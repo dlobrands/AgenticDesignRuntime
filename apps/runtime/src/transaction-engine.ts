@@ -1,5 +1,6 @@
+import { renameWithRetry as rename } from "../../../scripts/platform.mjs";
 import { randomUUID } from "node:crypto";
-import { rename, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import path from "node:path";
 import {
   AssetManifestSchema,
@@ -7,6 +8,7 @@ import {
   HistoryEntrySchema,
   ProjectDocumentSchema,
   RuntimeError,
+  SCHEMA_VERSION,
   TransactionRequestSchema,
   analyzeSemanticConflict,
   createProjectDocument,
@@ -133,7 +135,7 @@ export class TransactionEngine {
     actor: TransactionRequest["actor"];
     operation: Extract<
       SemanticOperation,
-      { kind: "importAsset" | "importFont" }
+      { kind: "importAsset" | "importFont" | "importColorProfile" }
     >;
   }): Promise<TransactionCommitResult> {
     const result = await this.#execute(
@@ -197,14 +199,16 @@ export class TransactionEngine {
           operation,
         ): operation is Extract<
           SemanticOperation,
-          { kind: "importAsset" | "importFont" }
+          { kind: "importAsset" | "importFont" | "importColorProfile" }
         > =>
-          operation.kind === "importAsset" || operation.kind === "importFont",
+          operation.kind === "importAsset" ||
+          operation.kind === "importFont" ||
+          operation.kind === "importColorProfile",
       );
       if (importOperations.length > 0 && !verifiedImport)
         throw new RuntimeError(
           "INVALID_OPERATION",
-          "Asset and font manifests can only be registered by the verified runtime import boundary.",
+          "Asset, font, and color-profile records can only be registered by the verified runtime import boundary.",
         );
       const pinOperations = request.operations.filter(
         (operation) =>
@@ -240,11 +244,17 @@ export class TransactionEngine {
                 const record =
                   operation.kind === "importAsset"
                     ? operation.asset
-                    : operation.font;
+                    : operation.kind === "importFont"
+                      ? operation.font
+                      : operation.profile;
                 await resolveRegisteredFile(
                   project,
                   record,
-                  operation.kind === "importAsset" ? "asset" : "font",
+                  operation.kind === "importAsset"
+                    ? "asset"
+                    : operation.kind === "importFont"
+                      ? "font"
+                      : "color-profile",
                 );
               }
             }
@@ -546,8 +556,14 @@ export class TransactionEngine {
       now,
     });
     ProjectDocumentSchema.parse(document);
-    const assets = AssetManifestSchema.parse({ schemaVersion: 1, assets: [] });
-    const fonts = FontManifestSchema.parse({ schemaVersion: 1, fonts: [] });
+    const assets = AssetManifestSchema.parse({
+      schemaVersion: SCHEMA_VERSION,
+      assets: [],
+    });
+    const fonts = FontManifestSchema.parse({
+      schemaVersion: SCHEMA_VERSION,
+      fonts: [],
+    });
     const operationHash = await this.#operationHash(request);
 
     if (request.mode === "preview") {

@@ -10,13 +10,19 @@ import {
   type DesignRuntimeClient,
 } from "@tva-agentic-design/client";
 import {
+  CreateBrandKitInputSchema,
   DesignBriefInputSchema,
   DesignPlanInputSchema,
   FrameOperationSchema,
+  LayoutContainerSchema,
   ProjectOperationSchema,
   WorkspaceOperationSchema,
+  SUPPORTED_BLEND_MODES,
+  compileArrangeOperations,
+  compileLayoutContainer,
   createDesignBrief,
   createDesignPlan,
+  detachBrandComponentOperations,
   detachTemplateInstanceOperations,
   findNode,
   searchNodes,
@@ -32,8 +38,10 @@ import {
   listActiveWorkspaces,
   runRuntimeLifecycle,
   runRuntimeUpdate,
+  runWorkspaceMigration,
   runtimePrerequisites,
 } from "./agent-runtime.js";
+import { withToolContracts } from "./tool-metadata.js";
 
 const textResult = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
@@ -117,14 +125,37 @@ export const runAgentMcp = async (
     return;
   }
   if (arguments_.includes("--help") || arguments_.includes("-h")) {
-    process.stdout.write("Usage: agentic-design-mcp [--plugin-root <path>]\n");
+    process.stdout.write(
+      "Usage: agentic-design-mcp [--plugin-root <path>] [--self-test-json]\n",
+    );
     return;
   }
   const pluginRoot = pluginRootFromArguments(arguments_);
-  const server = new McpServer({
-    name: "agentic-design-runtime",
-    version: AGENT_PLUGIN_VERSION,
-  });
+  if (arguments_.includes("--self-test-json")) {
+    const surface = JSON.parse(
+      await readFile(path.join(pluginRoot, "tool-surface.json"), "utf8"),
+    ) as { directTools?: unknown[]; agentOnlyTools?: unknown[] };
+    const tools = [
+      ...(surface.directTools ?? []),
+      ...(surface.agentOnlyTools ?? []),
+    ];
+    const prerequisites = await runtimePrerequisites(pluginRoot);
+    process.stdout.write(
+      `${JSON.stringify({
+        status: "ok",
+        pluginVersion: AGENT_PLUGIN_VERSION,
+        toolCount: tools.length,
+        prerequisites,
+      })}\n`,
+    );
+    return;
+  }
+  const server = withToolContracts(
+    new McpServer({
+      name: "agentic-design-runtime",
+      version: AGENT_PLUGIN_VERSION,
+    }),
+  );
 
   server.registerTool(
     "runtime_prerequisites",
@@ -197,6 +228,26 @@ export const runAgentMcp = async (
       runRuntimeLifecycle(String(workspacePath), "status"),
     ),
   );
+  for (const action of ["inspect", "preview", "commit", "rollback"] as const) {
+    server.registerTool(
+      `${action}_workspace_migration`,
+      {
+        title: `${action.charAt(0).toUpperCase()}${action.slice(1)} workspace migration`,
+        description:
+          action === "inspect"
+            ? "Inspect whether one stopped workspace requires the explicit schema-1 to schema-2 migration."
+            : action === "preview"
+              ? "Preview the bounded schema-1 to schema-2 migration without changing workspace files."
+              : action === "commit"
+                ? "Commit the backup-producing schema-1 to schema-2 migration while ADR is stopped."
+                : "Roll back the latest migration only when no schema-2 canonical revision has changed.",
+        inputSchema: workspaceSchema,
+      },
+      safe(async ({ workspacePath }) =>
+        runWorkspaceMigration(String(workspacePath), action),
+      ),
+    );
+  }
   server.registerTool(
     "open_studio",
     {
@@ -377,6 +428,277 @@ export const runAgentMcp = async (
     },
     safe(async ({ workspacePath, projectId }) =>
       withClient(workspacePath, (client) => client.getFonts(String(projectId))),
+    ),
+  );
+  server.registerTool(
+    "list_color_profiles",
+    {
+      title: "List color profiles",
+      description:
+        "Inspect project-scoped immutable CMYK ICC profiles available for PDF export.",
+      inputSchema: { ...workspaceSchema, projectId: z.string().uuid() },
+    },
+    safe(async ({ workspacePath, projectId }) =>
+      withClient(workspacePath, (client) =>
+        client.getColorProfiles(String(projectId)),
+      ),
+    ),
+  );
+  server.registerTool(
+    "list_brand_kits",
+    {
+      title: "List Brand Kits",
+      description:
+        "List the latest immutable Brand Kit revisions owned by one explicit workspace.",
+      inputSchema: workspaceSchema,
+    },
+    safe(async ({ workspacePath }) =>
+      withClient(workspacePath, (client) => client.listBrandKits()),
+    ),
+  );
+  server.registerTool(
+    "get_brand_kit",
+    {
+      title: "Get Brand Kit",
+      description:
+        "Inspect one exact immutable Brand Kit revision, including tokens, verified resources, and reusable definitions.",
+      inputSchema: {
+        ...workspaceSchema,
+        kitId: z.string().uuid(),
+        revision: z.number().int().positive().optional(),
+      },
+    },
+    safe(async ({ workspacePath, kitId, revision }) =>
+      withClient(workspacePath, (client) =>
+        client.getBrandKit(
+          String(kitId),
+          revision ? Number(revision) : undefined,
+        ),
+      ),
+    ),
+  );
+  server.registerTool(
+    "create_brand_kit",
+    {
+      title: "Create Brand Kit revision",
+      description:
+        "Create an immutable workspace Brand Kit revision from assets and fonts already verified in one source project.",
+      inputSchema: {
+        ...workspaceSchema,
+        kitId: CreateBrandKitInputSchema.shape.kitId,
+        name: CreateBrandKitInputSchema.shape.name,
+        description: CreateBrandKitInputSchema.shape.description,
+        sourceProjectId: CreateBrandKitInputSchema.shape.sourceProjectId,
+        provenance: CreateBrandKitInputSchema.shape.provenance,
+        licenseNotes: CreateBrandKitInputSchema.shape.licenseNotes,
+        palette: CreateBrandKitInputSchema.shape.palette,
+        typeRoles: CreateBrandKitInputSchema.shape.typeRoles,
+        effectStyles: CreateBrandKitInputSchema.shape.effectStyles,
+        radiusTokens: CreateBrandKitInputSchema.shape.radiusTokens,
+        spacingTokens: CreateBrandKitInputSchema.shape.spacingTokens,
+        variableModes: CreateBrandKitInputSchema.shape.variableModes,
+        logos: CreateBrandKitInputSchema.shape.logos,
+        definitions: CreateBrandKitInputSchema.shape.definitions,
+      },
+    },
+    safe(async (input) =>
+      withClient(input.workspacePath, (client) =>
+        client.createBrandKit({
+          ...(input.kitId ? { kitId: String(input.kitId) } : {}),
+          name: String(input.name),
+          ...(input.description
+            ? { description: String(input.description) }
+            : {}),
+          sourceProjectId: String(input.sourceProjectId),
+          provenance: String(input.provenance),
+          licenseNotes: String(input.licenseNotes),
+          palette: input.palette as never,
+          typeRoles: input.typeRoles as never,
+          ...(input.effectStyles
+            ? { effectStyles: input.effectStyles as never }
+            : {}),
+          ...(input.radiusTokens
+            ? { radiusTokens: input.radiusTokens as never }
+            : {}),
+          ...(input.spacingTokens
+            ? { spacingTokens: input.spacingTokens as never }
+            : {}),
+          ...(input.variableModes
+            ? { variableModes: input.variableModes as never }
+            : {}),
+          logos: input.logos as never,
+          definitions: input.definitions as never,
+          actor: { source: "mcp", id: "brand-kit" },
+        }),
+      ),
+    ),
+  );
+  server.registerTool(
+    "pin_brand_kit",
+    {
+      title: "Pin Brand Kit",
+      description:
+        "Preview or commit one project pin to an exact immutable Brand Kit revision after runtime-owned resources are verified.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        kitId: z.string().uuid(),
+        revision: z.number().int().positive(),
+        baseRevision: z.number().int().nonnegative(),
+        mode: z.enum(["preview", "commit"]),
+      },
+    },
+    safe(
+      async ({
+        workspacePath,
+        projectId,
+        kitId,
+        revision,
+        baseRevision,
+        mode,
+      }) =>
+        withClient(workspacePath, (client) =>
+          client.pinBrandKit({
+            projectId: String(projectId),
+            kitId: String(kitId),
+            revision: Number(revision),
+            baseRevision: Number(baseRevision),
+            mode: mode as "preview" | "commit",
+            actor: { source: "mcp", id: "brand-kit" },
+          }),
+        ),
+    ),
+  );
+  server.registerTool(
+    "unpin_brand_kit",
+    {
+      title: "Detach Brand Kit",
+      description:
+        "Preview or commit detaching a project Brand Kit pin without changing existing artwork.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        mode: z.enum(["preview", "commit"]),
+      },
+    },
+    safe(async ({ workspacePath, projectId, baseRevision, mode }) =>
+      withClient(workspacePath, (client) =>
+        client.unpinBrandKit({
+          projectId: String(projectId),
+          baseRevision: Number(baseRevision),
+          mode: mode as "preview" | "commit",
+          actor: { source: "mcp", id: "brand-kit" },
+        }),
+      ),
+    ),
+  );
+  server.registerTool(
+    "apply_brand",
+    {
+      title: "Apply Brand Kit",
+      description:
+        "Preview or commit palette, typography, logo, component, or template applications from the project's exact pinned Brand Kit.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        mode: z.enum(["preview", "commit"]),
+        palette: z
+          .array(
+            z.object({
+              nodeId: z.string().uuid(),
+              token: z.string(),
+              property: z.enum(["fill", "textColor"]),
+            }),
+          )
+          .optional(),
+        typeRoles: z
+          .array(z.object({ nodeId: z.string().uuid(), role: z.string() }))
+          .optional(),
+        logo: z
+          .object({
+            key: z.string(),
+            nodeId: z.string().uuid(),
+            parentId: z.string(),
+            index: z.number().int().nonnegative().optional(),
+            x: z.number(),
+            y: z.number(),
+            width: z.number().positive().optional(),
+            height: z.number().positive().optional(),
+          })
+          .optional(),
+        definition: z
+          .object({
+            key: z.string(),
+            parentId: z.string(),
+            index: z.number().int().nonnegative().optional(),
+            idMap: z.record(z.string(), z.string().uuid()),
+            instanceId: z.string().uuid().optional(),
+          })
+          .optional(),
+      },
+    },
+    safe(async (input) =>
+      withClient(input.workspacePath, (client) =>
+        client.applyBrand({
+          projectId: String(input.projectId),
+          frameId: String(input.frameId),
+          baseRevision: Number(input.baseRevision),
+          mode: input.mode as "preview" | "commit",
+          actor: { source: "mcp", id: "brand-kit" },
+          ...(input.palette ? { palette: input.palette as never } : {}),
+          ...(input.typeRoles ? { typeRoles: input.typeRoles as never } : {}),
+          ...(input.logo ? { logo: input.logo as never } : {}),
+          ...(input.definition
+            ? { definition: input.definition as never }
+            : {}),
+        }),
+      ),
+    ),
+  );
+  server.registerTool(
+    "detach_brand_component",
+    {
+      title: "Detach Brand component instance",
+      description:
+        "Preview or commit removal of exact-pin component identity while preserving appearance, stable node IDs, and hierarchy.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        instanceId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        mode: z.enum(["preview", "commit"]).optional(),
+        actorId: z.string().min(1).max(128).optional(),
+      },
+    },
+    safe(async (input) =>
+      withClient(input.workspacePath, async (client) => {
+        const frame = await client.getFrame(
+          String(input.projectId),
+          String(input.frameId),
+        );
+        return client.transact({
+          schemaVersion: 1,
+          mode: input.mode === "commit" ? "commit" : "preview",
+          scope: {
+            kind: "frame",
+            projectId: String(input.projectId),
+            frameId: String(input.frameId),
+          },
+          baseRevision: Number(input.baseRevision),
+          actor: {
+            source: "mcp",
+            id: String(input.actorId ?? "brand-component-agent"),
+          },
+          operations: detachBrandComponentOperations(
+            frame,
+            String(input.instanceId),
+          ),
+        });
+      }),
     ),
   );
   server.registerTool(
@@ -640,6 +962,153 @@ export const runAgentMcp = async (
       inputSchema: batchSchema,
     },
     safe(async (input) => batch("preview", input)),
+  );
+  server.registerTool(
+    "preview_layer_compositing",
+    {
+      title: "Preview layer compositing",
+      description:
+        "Preview one atomic blend-mode, opacity, and fill-opacity change across explicit frame layers.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        actorId: z.string().min(1),
+        nodeIds: z.array(z.string().uuid()).min(1),
+        blendMode: z.enum(SUPPORTED_BLEND_MODES).optional(),
+        opacity: z.number().min(0).max(1).optional(),
+        fillOpacity: z.number().min(0).max(1).optional(),
+      },
+    },
+    safe(async (input) =>
+      withClient(input.workspacePath, (client) =>
+        client.transact({
+          schemaVersion: 1,
+          mode: "preview",
+          actor: { source: "mcp", id: String(input.actorId) },
+          renderPreview: true,
+          scope: {
+            kind: "frame",
+            projectId: String(input.projectId),
+            frameId: String(input.frameId),
+          },
+          baseRevision: Number(input.baseRevision),
+          operations: (input.nodeIds as string[]).map((nodeId) => ({
+            kind: "updateNode" as const,
+            nodeId,
+            propertyGroup: "compositing" as const,
+            value: {
+              ...(input.blendMode ? { blendMode: input.blendMode } : {}),
+              ...(input.opacity !== undefined
+                ? { opacity: input.opacity }
+                : {}),
+              ...(input.fillOpacity !== undefined
+                ? { fillOpacity: input.fillOpacity }
+                : {}),
+            },
+          })),
+        }),
+      ),
+    ),
+  );
+  server.registerTool(
+    "preview_arrange_layers",
+    {
+      title: "Preview layer arrangement",
+      description:
+        "Preview professional align or equal-gap distribution using selection, canvas, or key-layer bounds.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        actorId: z.string().min(1),
+        nodeIds: z.array(z.string().uuid()).min(1),
+        action: z.enum([
+          "align-left",
+          "align-center-x",
+          "align-right",
+          "align-top",
+          "align-center-y",
+          "align-bottom",
+          "distribute-horizontal",
+          "distribute-vertical",
+        ]),
+        relativeTo: z.enum(["selection", "canvas", "key"]).optional(),
+        keyNodeId: z.string().uuid().optional(),
+      },
+    },
+    safe(async (input) =>
+      withClient(input.workspacePath, async (client) => {
+        const frame = await client.getFrame(
+          String(input.projectId),
+          String(input.frameId),
+        );
+        return client.transact({
+          schemaVersion: 1,
+          mode: "preview",
+          actor: { source: "mcp", id: String(input.actorId) },
+          renderPreview: true,
+          scope: {
+            kind: "frame",
+            projectId: String(input.projectId),
+            frameId: String(input.frameId),
+          },
+          baseRevision: Number(input.baseRevision),
+          operations: compileArrangeOperations({
+            frame,
+            nodeIds: input.nodeIds as string[],
+            action: input.action,
+            relativeTo: input.relativeTo,
+            keyNodeId: input.keyNodeId,
+          }),
+        });
+      }),
+    ),
+  );
+  server.registerTool(
+    "preview_layout_container",
+    {
+      title: "Preview layout container",
+      description:
+        "Preview explicit row or column layout intent and its compiled stable-ID child transforms for one group.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        groupId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        actorId: z.string().min(1),
+        layout: LayoutContainerSchema,
+      },
+    },
+    safe(async (input) =>
+      withClient(input.workspacePath, async (client) => {
+        const frame = await client.getFrame(
+          String(input.projectId),
+          String(input.frameId),
+        );
+        const group = findNode(frame, String(input.groupId));
+        if (!group || group.type !== "group")
+          throw new Error("LAYOUT_CONTAINER_GROUP_NOT_FOUND");
+        const compilation = compileLayoutContainer(group, input.layout);
+        const preview = await client.transact({
+          schemaVersion: 1,
+          mode: "preview",
+          actor: { source: "mcp", id: String(input.actorId) },
+          renderPreview: true,
+          scope: {
+            kind: "frame",
+            projectId: String(input.projectId),
+            frameId: String(input.frameId),
+          },
+          baseRevision: Number(input.baseRevision),
+          operations: compilation.operations,
+        });
+        return { preview, warnings: compilation.warnings };
+      }),
+    ),
   );
   server.registerTool(
     "commit_batch",
@@ -1053,6 +1522,40 @@ export const runAgentMcp = async (
     ),
   );
   server.registerTool(
+    "switch_brand_component_variant",
+    {
+      title: "Switch Brand component variant",
+      description:
+        "Preview or commit one compatible component variant from the exact pinned Brand Kit while preserving stable IDs and active overrides.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        instanceId: z.string().uuid(),
+        definitionKey: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),
+        baseRevision: z.number().int().nonnegative(),
+        mode: z.enum(["preview", "commit"]).optional(),
+        actorId: z.string().min(1).max(128).optional(),
+      },
+    },
+    safe(async (input) =>
+      withClient(input.workspacePath, (client) =>
+        client.switchBrandComponentVariant({
+          projectId: String(input.projectId),
+          frameId: String(input.frameId),
+          instanceId: String(input.instanceId),
+          definitionKey: String(input.definitionKey),
+          baseRevision: Number(input.baseRevision),
+          mode: input.mode === "commit" ? "commit" : "preview",
+          actor: {
+            source: "mcp",
+            id: String(input.actorId ?? "brand-component-agent"),
+          },
+        }),
+      ),
+    ),
+  );
+  server.registerTool(
     "explain_proposed_changes",
     {
       title: "Explain proposed changes",
@@ -1144,13 +1647,18 @@ export const runAgentMcp = async (
         ...workspaceSchema,
         projectId: z.string().uuid(),
         frameId: z.string().uuid(),
-        format: z.enum(["png", "jpeg", "webp"]).optional(),
+        format: z.enum(["png", "jpeg", "webp", "svg", "pdf"]).optional(),
         scale: z.number().min(0.25).max(4).optional(),
         quality: z.number().int().min(1).max(100).optional(),
         matteColor: z
           .string()
           .regex(/^#[0-9A-Fa-f]{6}$/)
           .optional(),
+        svgMode: z.enum(["vectorOnly", "hybrid"]).optional(),
+        dpi: z.number().int().min(72).max(600).optional(),
+        outputIccProfileId: z.string().uuid().optional(),
+        bleedMm: z.number().min(0).max(25).optional(),
+        cropMarks: z.boolean().optional(),
       },
     },
     safe(
@@ -1162,6 +1670,11 @@ export const runAgentMcp = async (
         scale,
         quality,
         matteColor,
+        svgMode,
+        dpi,
+        outputIccProfileId,
+        bleedMm,
+        cropMarks,
       }) =>
         withClient(workspacePath, (client) =>
           client.exportFrame(String(projectId), String(frameId), {
@@ -1169,6 +1682,11 @@ export const runAgentMcp = async (
             scale,
             quality,
             matteColor,
+            svgMode,
+            dpi,
+            outputIccProfileId,
+            bleedMm,
+            cropMarks,
           }),
         ),
     ),
@@ -1183,13 +1701,18 @@ export const runAgentMcp = async (
         ...workspaceSchema,
         projectId: z.string().uuid(),
         frameIds: z.array(z.string().uuid()).min(1).max(100),
-        format: z.enum(["png", "jpeg", "webp"]).optional(),
+        format: z.enum(["png", "jpeg", "webp", "svg", "pdf"]).optional(),
         scale: z.number().min(0.25).max(4).optional(),
         quality: z.number().int().min(1).max(100).optional(),
         matteColor: z
           .string()
           .regex(/^#[0-9A-Fa-f]{6}$/)
           .optional(),
+        svgMode: z.enum(["vectorOnly", "hybrid"]).optional(),
+        dpi: z.number().int().min(72).max(600).optional(),
+        outputIccProfileId: z.string().uuid().optional(),
+        bleedMm: z.number().min(0).max(25).optional(),
+        cropMarks: z.boolean().optional(),
       },
     },
     safe(
@@ -1201,6 +1724,11 @@ export const runAgentMcp = async (
         scale,
         quality,
         matteColor,
+        svgMode,
+        dpi,
+        outputIccProfileId,
+        bleedMm,
+        cropMarks,
       }) =>
         withClient(workspacePath, (client) =>
           client.exportProject(String(projectId), frameIds.map(String), {
@@ -1208,6 +1736,11 @@ export const runAgentMcp = async (
             scale,
             quality,
             matteColor,
+            svgMode,
+            dpi,
+            outputIccProfileId,
+            bleedMm,
+            cropMarks,
           }),
         ),
     ),
@@ -1636,7 +2169,7 @@ export const runAgentMcp = async (
     {
       title: "Create design variant",
       description:
-        "Compile one exact saved DesignPlan variant rule into an ordinary canonical preview. Same-format hide/reflow/stretch-resize behaviors only; format changes return a warning and no partial preview. Never commits automatically.",
+        "Compile one exact saved DesignPlan variant rule into a canonical preview. Cross-format rules atomically preview a new constrained frame and never mutate the source frame.",
       inputSchema: {
         ...workspaceSchema,
         projectId: z.string().uuid(),
@@ -1644,6 +2177,10 @@ export const runAgentMcp = async (
         planId: z.string().uuid(),
         variantRuleId: z.string().uuid(),
         baseRevision: z.number().int().nonnegative(),
+        projectBaseRevision: z.number().int().nonnegative().optional(),
+        newFrameId: z.string().uuid().optional(),
+        slug: z.string().min(1).max(160).optional(),
+        name: z.string().min(1).max(160).optional(),
         actorId: z.string().min(1).max(128).optional(),
       },
     },
@@ -1655,6 +2192,10 @@ export const runAgentMcp = async (
         planId,
         variantRuleId,
         baseRevision,
+        projectBaseRevision,
+        newFrameId,
+        slug,
+        name,
         actorId,
       }) =>
         withClient(workspacePath, (client) =>
@@ -1664,6 +2205,12 @@ export const runAgentMcp = async (
             planId: String(planId),
             variantRuleId: String(variantRuleId),
             baseRevision: Number(baseRevision),
+            ...(projectBaseRevision !== undefined
+              ? { projectBaseRevision: Number(projectBaseRevision) }
+              : {}),
+            ...(newFrameId ? { newFrameId: String(newFrameId) } : {}),
+            ...(slug ? { slug: String(slug) } : {}),
+            ...(name ? { name: String(name) } : {}),
             actor: {
               source: "mcp",
               id: String(actorId ?? "variant-agent"),
@@ -1863,7 +2410,7 @@ export const runAgentMcp = async (
   );
 
   const importLocal = async (
-    type: "asset" | "font",
+    type: "asset" | "font" | "color-profile",
     workspacePath: string,
     projectId: string,
     sourcePath: string,
@@ -1885,7 +2432,13 @@ export const runAgentMcp = async (
     form.set("baseRevision", String(baseRevision));
     if (licenseNotes) form.set("licenseNotes", licenseNotes);
     const response = await fetch(
-      `${descriptor.baseUrl}/api/projects/${projectId}/${type === "asset" ? "assets" : "fonts"}/import`,
+      `${descriptor.baseUrl}/api/projects/${projectId}/${
+        type === "asset"
+          ? "assets"
+          : type === "font"
+            ? "fonts"
+            : "color-profiles"
+      }/import`,
       {
         method: "POST",
         headers: {
@@ -1965,6 +2518,38 @@ export const runAgentMcp = async (
       }) =>
         importLocal(
           "font",
+          String(workspacePath),
+          String(projectId),
+          String(sourcePath),
+          Number(baseRevision),
+          licenseNotes ? String(licenseNotes) : undefined,
+        ),
+    ),
+  );
+  server.registerTool(
+    "import_color_profile",
+    {
+      title: "Import local CMYK profile",
+      description:
+        "Validate and copy one local process-CMYK ICC profile for explicit PDF export. The source path is never persisted.",
+      inputSchema: {
+        ...workspaceSchema,
+        projectId: z.string().uuid(),
+        sourcePath: z.string().min(1),
+        baseRevision: z.number().int().min(0),
+        licenseNotes: z.string().optional(),
+      },
+    },
+    safe(
+      async ({
+        workspacePath,
+        projectId,
+        sourcePath,
+        baseRevision,
+        licenseNotes,
+      }) =>
+        importLocal(
+          "color-profile",
           String(workspacePath),
           String(projectId),
           String(sourcePath),

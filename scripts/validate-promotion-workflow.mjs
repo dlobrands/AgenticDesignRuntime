@@ -33,7 +33,7 @@ const privateContracts = [
   'test "${CONFIRMATION}" = "PUBLISH ADR v${VERSION}"',
   'git tag --list "v${VERSION}"',
   "git ls-remote --tags https://github.com/dlobrands/AgenticDesignRuntime.git",
-  "needs: [authorize, quality, macos-release]",
+  "needs: [authorize, quality, macos-release, windows-release]",
   "environment: public-production",
   "secrets.ADR_PUBLIC_REPO_TOKEN",
   "git -C public-repository diff --cached --quiet",
@@ -52,7 +52,7 @@ if (workflow) {
       workflow.match(
         /ref: \$\{\{ needs\.authorize\.outputs\.source_commit \}\}/g,
       ) ?? []
-    ).length !== 3
+    ).length !== 4
   )
     throw new Error(
       "Every private release job must check out the authorized source commit.",

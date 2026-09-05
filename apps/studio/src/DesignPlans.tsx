@@ -1,4 +1,81 @@
+import { useState, type FormEvent } from "react";
+import type { DesignPlan } from "@tva-agentic-design/core";
 import { useStudio } from "./store";
+
+function PlanCorrectionForm({ plan }: { plan: DesignPlan }) {
+  const [draft, setDraft] = useState(() => structuredClone(plan));
+  const preview = useStudio((state) => state.preview);
+  const correction = useStudio((state) => state.intentCorrection);
+  const previewCorrection = useStudio(
+    (state) => state.previewDesignPlanCorrection,
+  );
+  const commitPreview = useStudio((state) => state.commitPreview);
+  const discardPreview = useStudio((state) => state.discardPreview);
+  const active = correction?.kind === "plan" && correction.id === plan.id;
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    void previewCorrection(draft);
+  };
+  return (
+    <form className="intent-correction" onSubmit={submit}>
+      <strong>Correct plan intent</strong>
+      <p>
+        Correct the objective or declared constraints. Role bindings remain
+        available beside each semantic role.
+      </p>
+      <label className="field field-wide">
+        <span>Objective</span>
+        <textarea
+          rows={3}
+          value={draft.objectiveSummary}
+          onChange={(event) =>
+            setDraft({ ...draft, objectiveSummary: event.target.value })
+          }
+        />
+      </label>
+      {draft.constraints.map((constraint, index) => (
+        <label className="field field-wide" key={constraint.id}>
+          <span>{constraint.priority}</span>
+          <textarea
+            rows={2}
+            value={constraint.description}
+            onChange={(event) => {
+              const constraints = structuredClone(draft.constraints);
+              constraints[index] = {
+                ...constraint,
+                description: event.target.value,
+              };
+              setDraft({ ...draft, constraints });
+            }}
+          />
+        </label>
+      ))}
+      <div className="button-row">
+        <button type="submit">Preview corrections</button>
+        <button type="button" onClick={() => setDraft(structuredClone(plan))}>
+          Reset fields
+        </button>
+      </div>
+      {active && preview ? (
+        <div className="design-plan-compilation" role="status">
+          <strong>Review plan correction</strong>
+          <p>
+            {preview.diff.length} canonical project changes. Approval returns to
+            draft.
+          </p>
+          <div className="button-row">
+            <button type="button" onClick={() => void commitPreview()}>
+              Commit corrections
+            </button>
+            <button type="button" onClick={discardPreview}>
+              Discard corrections
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </form>
+  );
+}
 
 export function DesignPlans() {
   const plans = useStudio((state) => state.activeProject?.designPlans ?? []);
@@ -529,9 +606,11 @@ export function DesignPlans() {
                 ) : null}
               </div>
               <p className="advanced-disclosure">
-                Read-only plan. It contains no executable code and cannot alter
-                artwork until a separate intent-compiler preview is reviewed.
+                Agent-authored plan. Structured corrections update project
+                intent only and never alter artwork without a separate compiler
+                preview.
               </p>
+              <PlanCorrectionForm plan={plan} />
             </div>
           </details>
         );

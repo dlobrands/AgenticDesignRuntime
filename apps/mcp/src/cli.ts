@@ -14,8 +14,12 @@ import {
   DesignBriefInputSchema,
   DesignPlanInputSchema,
   FrameOperationSchema,
+  LayoutContainerSchema,
   ProjectOperationSchema,
   WorkspaceOperationSchema,
+  SUPPORTED_BLEND_MODES,
+  compileArrangeOperations,
+  compileLayoutContainer,
   createDesignBrief,
   createDesignPlan,
   detachTemplateInstanceOperations,
@@ -28,6 +32,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as z from "zod/v4";
 import { PRODUCT_VERSION } from "./version.js";
+import { withToolContracts } from "./tool-metadata.js";
 
 type Descriptor = {
   schemaVersion: 1;
@@ -173,10 +178,12 @@ export const runMcp = async (
     clientLabel: "Direct MCP",
   });
   await client.getRuntime();
-  const server = new McpServer({
-    name: "agentic-design-runtime",
-    version: PRODUCT_VERSION,
-  });
+  const server = withToolContracts(
+    new McpServer({
+      name: "agentic-design-runtime",
+      version: PRODUCT_VERSION,
+    }),
+  );
 
   server.registerTool(
     "runtime_status",
@@ -306,6 +313,16 @@ export const runMcp = async (
       inputSchema: { projectId: z.string().uuid() },
     },
     safe(async ({ projectId }) => client.getFonts(String(projectId))),
+  );
+  server.registerTool(
+    "list_color_profiles",
+    {
+      title: "List color profiles",
+      description:
+        "Inspect project-scoped immutable CMYK ICC profiles available for PDF export.",
+      inputSchema: { projectId: z.string().uuid() },
+    },
+    safe(async ({ projectId }) => client.getColorProfiles(String(projectId))),
   );
   for (const action of ["check", "fetch", "apply", "rollback"] as const) {
     server.registerTool(
@@ -1156,6 +1173,142 @@ export const runMcp = async (
     safe(async (input) => batch("preview", input)),
   );
   server.registerTool(
+    "preview_layer_compositing",
+    {
+      title: "Preview layer compositing",
+      description:
+        "Preview one atomic blend-mode, opacity, and fill-opacity change across explicit frame layers.",
+      inputSchema: {
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        actorId: z.string().min(1),
+        nodeIds: z.array(z.string().uuid()).min(1),
+        blendMode: z.enum(SUPPORTED_BLEND_MODES).optional(),
+        opacity: z.number().min(0).max(1).optional(),
+        fillOpacity: z.number().min(0).max(1).optional(),
+      },
+    },
+    safe(async (input) =>
+      client.transact({
+        schemaVersion: 1,
+        mode: "preview",
+        actor: { source: "mcp", id: String(input.actorId) },
+        renderPreview: true,
+        scope: {
+          kind: "frame",
+          projectId: String(input.projectId),
+          frameId: String(input.frameId),
+        },
+        baseRevision: Number(input.baseRevision),
+        operations: (input.nodeIds as string[]).map((nodeId) => ({
+          kind: "updateNode" as const,
+          nodeId,
+          propertyGroup: "compositing" as const,
+          value: {
+            ...(input.blendMode ? { blendMode: input.blendMode } : {}),
+            ...(input.opacity !== undefined ? { opacity: input.opacity } : {}),
+            ...(input.fillOpacity !== undefined
+              ? { fillOpacity: input.fillOpacity }
+              : {}),
+          },
+        })),
+      }),
+    ),
+  );
+  server.registerTool(
+    "preview_arrange_layers",
+    {
+      title: "Preview layer arrangement",
+      description:
+        "Preview align or equal-gap distribution using selection, canvas, or key-layer bounds.",
+      inputSchema: {
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        actorId: z.string().min(1),
+        nodeIds: z.array(z.string().uuid()).min(1),
+        action: z.enum([
+          "align-left",
+          "align-center-x",
+          "align-right",
+          "align-top",
+          "align-center-y",
+          "align-bottom",
+          "distribute-horizontal",
+          "distribute-vertical",
+        ]),
+        relativeTo: z.enum(["selection", "canvas", "key"]).optional(),
+        keyNodeId: z.string().uuid().optional(),
+      },
+    },
+    safe(async (input) => {
+      const frame = await client.getFrame(
+        String(input.projectId),
+        String(input.frameId),
+      );
+      return client.transact({
+        schemaVersion: 1,
+        mode: "preview",
+        actor: { source: "mcp", id: String(input.actorId) },
+        renderPreview: true,
+        scope: {
+          kind: "frame",
+          projectId: String(input.projectId),
+          frameId: String(input.frameId),
+        },
+        baseRevision: Number(input.baseRevision),
+        operations: compileArrangeOperations({
+          frame,
+          nodeIds: input.nodeIds as string[],
+          action: input.action,
+          relativeTo: input.relativeTo,
+          keyNodeId: input.keyNodeId,
+        }),
+      });
+    }),
+  );
+  server.registerTool(
+    "preview_layout_container",
+    {
+      title: "Preview layout container",
+      description:
+        "Preview explicit row or column layout intent and its compiled stable-ID child transforms for one group.",
+      inputSchema: {
+        projectId: z.string().uuid(),
+        frameId: z.string().uuid(),
+        groupId: z.string().uuid(),
+        baseRevision: z.number().int().nonnegative(),
+        actorId: z.string().min(1),
+        layout: LayoutContainerSchema,
+      },
+    },
+    safe(async (input) => {
+      const frame = await client.getFrame(
+        String(input.projectId),
+        String(input.frameId),
+      );
+      const group = findNode(frame, String(input.groupId));
+      if (!group || group.type !== "group")
+        throw new Error("LAYOUT_CONTAINER_GROUP_NOT_FOUND");
+      const compilation = compileLayoutContainer(group, input.layout);
+      const preview = await client.transact({
+        schemaVersion: 1,
+        mode: "preview",
+        actor: { source: "mcp", id: String(input.actorId) },
+        renderPreview: true,
+        scope: {
+          kind: "frame",
+          projectId: String(input.projectId),
+          frameId: String(input.frameId),
+        },
+        baseRevision: Number(input.baseRevision),
+        operations: compilation.operations,
+      });
+      return { preview, warnings: compilation.warnings };
+    }),
+  );
+  server.registerTool(
     "commit_batch",
     {
       title: "Commit atomic batch",
@@ -1242,22 +1395,45 @@ export const runMcp = async (
       inputSchema: {
         projectId: z.string().uuid(),
         frameId: z.string().uuid(),
-        format: z.enum(["png", "jpeg", "webp"]).optional(),
+        format: z.enum(["png", "jpeg", "webp", "svg", "pdf"]).optional(),
         scale: z.number().min(0.25).max(4).optional(),
         quality: z.number().int().min(1).max(100).optional(),
         matteColor: z
           .string()
           .regex(/^#[0-9A-Fa-f]{6}$/)
           .optional(),
+        svgMode: z.enum(["vectorOnly", "hybrid"]).optional(),
+        dpi: z.number().int().min(72).max(600).optional(),
+        outputIccProfileId: z.string().uuid().optional(),
+        bleedMm: z.number().min(0).max(25).optional(),
+        cropMarks: z.boolean().optional(),
       },
     },
-    safe(async ({ projectId, frameId, format, scale, quality, matteColor }) =>
-      client.exportFrame(String(projectId), String(frameId), {
+    safe(
+      async ({
+        projectId,
+        frameId,
         format,
         scale,
         quality,
         matteColor,
-      }),
+        svgMode,
+        dpi,
+        outputIccProfileId,
+        bleedMm,
+        cropMarks,
+      }) =>
+        client.exportFrame(String(projectId), String(frameId), {
+          format,
+          scale,
+          quality,
+          matteColor,
+          svgMode,
+          dpi,
+          outputIccProfileId,
+          bleedMm,
+          cropMarks,
+        }),
     ),
   );
   server.registerTool(
@@ -1269,22 +1445,45 @@ export const runMcp = async (
       inputSchema: {
         projectId: z.string().uuid(),
         frameIds: z.array(z.string().uuid()).min(1).max(100),
-        format: z.enum(["png", "jpeg", "webp"]).optional(),
+        format: z.enum(["png", "jpeg", "webp", "svg", "pdf"]).optional(),
         scale: z.number().min(0.25).max(4).optional(),
         quality: z.number().int().min(1).max(100).optional(),
         matteColor: z
           .string()
           .regex(/^#[0-9A-Fa-f]{6}$/)
           .optional(),
+        svgMode: z.enum(["vectorOnly", "hybrid"]).optional(),
+        dpi: z.number().int().min(72).max(600).optional(),
+        outputIccProfileId: z.string().uuid().optional(),
+        bleedMm: z.number().min(0).max(25).optional(),
+        cropMarks: z.boolean().optional(),
       },
     },
-    safe(async ({ projectId, frameIds, format, scale, quality, matteColor }) =>
-      client.exportProject(String(projectId), frameIds.map(String), {
+    safe(
+      async ({
+        projectId,
+        frameIds,
         format,
         scale,
         quality,
         matteColor,
-      }),
+        svgMode,
+        dpi,
+        outputIccProfileId,
+        bleedMm,
+        cropMarks,
+      }) =>
+        client.exportProject(String(projectId), frameIds.map(String), {
+          format,
+          scale,
+          quality,
+          matteColor,
+          svgMode,
+          dpi,
+          outputIccProfileId,
+          bleedMm,
+          cropMarks,
+        }),
     ),
   );
   server.registerTool(
@@ -1603,13 +1802,17 @@ export const runMcp = async (
     {
       title: "Create design variant",
       description:
-        "Compile one exact saved DesignPlan variant rule into an ordinary canonical preview. Same-format hide/reflow/stretch-resize behaviors only; format changes return a warning and no partial preview. Never commits automatically.",
+        "Compile one exact saved DesignPlan variant rule into a canonical preview. Cross-format rules atomically preview a new constrained frame and never mutate the source frame.",
       inputSchema: {
         projectId: z.string().uuid(),
         frameId: z.string().uuid(),
         planId: z.string().uuid(),
         variantRuleId: z.string().uuid(),
         baseRevision: z.number().int().nonnegative(),
+        projectBaseRevision: z.number().int().nonnegative().optional(),
+        newFrameId: z.string().uuid().optional(),
+        slug: z.string().min(1).max(160).optional(),
+        name: z.string().min(1).max(160).optional(),
         actorId: z.string().min(1).max(128).optional(),
       },
     },
@@ -1620,6 +1823,10 @@ export const runMcp = async (
         planId,
         variantRuleId,
         baseRevision,
+        projectBaseRevision,
+        newFrameId,
+        slug,
+        name,
         actorId,
       }) =>
         client.createDesignVariant({
@@ -1628,6 +1835,12 @@ export const runMcp = async (
           planId: String(planId),
           variantRuleId: String(variantRuleId),
           baseRevision: Number(baseRevision),
+          ...(projectBaseRevision !== undefined
+            ? { projectBaseRevision: Number(projectBaseRevision) }
+            : {}),
+          ...(newFrameId ? { newFrameId: String(newFrameId) } : {}),
+          ...(slug ? { slug: String(slug) } : {}),
+          ...(name ? { name: String(name) } : {}),
           actor: { source: "mcp", id: String(actorId ?? "variant-agent") },
         }),
     ),
@@ -1787,7 +2000,7 @@ export const runMcp = async (
   );
 
   const importLocal = async (
-    kind: "asset" | "font",
+    kind: "asset" | "font" | "color-profile",
     projectId: string,
     sourcePath: string,
     baseRevision: number,
@@ -1807,7 +2020,13 @@ export const runMcp = async (
     form.set("baseRevision", String(baseRevision));
     if (licenseNotes) form.set("licenseNotes", licenseNotes);
     const response = await fetch(
-      `${descriptor.baseUrl}/api/projects/${projectId}/${kind === "asset" ? "assets" : "fonts"}/import`,
+      `${descriptor.baseUrl}/api/projects/${projectId}/${
+        kind === "asset"
+          ? "assets"
+          : kind === "font"
+            ? "fonts"
+            : "color-profiles"
+      }/import`,
       {
         method: "POST",
         headers: {
@@ -1877,6 +2096,29 @@ export const runMcp = async (
     safe(async ({ projectId, sourcePath, baseRevision, licenseNotes }) =>
       importLocal(
         "font",
+        String(projectId),
+        String(sourcePath),
+        Number(baseRevision),
+        licenseNotes ? String(licenseNotes) : undefined,
+      ),
+    ),
+  );
+  server.registerTool(
+    "import_color_profile",
+    {
+      title: "Import local CMYK profile",
+      description:
+        "Validate and copy one local process-CMYK ICC profile for explicit PDF export. The source path is never persisted.",
+      inputSchema: {
+        projectId: z.string().uuid(),
+        sourcePath: z.string().min(1),
+        baseRevision: z.number().int().min(0),
+        licenseNotes: z.string().optional(),
+      },
+    },
+    safe(async ({ projectId, sourcePath, baseRevision, licenseNotes }) =>
+      importLocal(
+        "color-profile",
         String(projectId),
         String(sourcePath),
         Number(baseRevision),

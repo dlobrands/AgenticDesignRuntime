@@ -8,6 +8,7 @@ import {
   ColorMatrixFilter,
   Container,
   Graphics,
+  GraphicsPath,
   MaskFilter,
   Rectangle,
   Sprite,
@@ -67,6 +68,18 @@ const assetFormat = (asset: Asset): string =>
       ? "svg"
       : asset.mimeType.split("/")[1]!;
 
+const textDirection = (node: TextNode): "ltr" | "rtl" =>
+  node.typography.direction === "rtl" ||
+  (node.typography.direction !== "ltr" && /[\u0590-\u08FF]/u.test(node.text))
+    ? "rtl"
+    : "ltr";
+
+const directionalText = (node: TextNode): string =>
+  textDirection(node) === "rtl" ? `\u202B${node.text}\u202C` : node.text;
+
+const directionalFragment = (node: TextNode, text: string): string =>
+  textDirection(node) === "rtl" ? `\u202B${text}\u202C` : text;
+
 const hasEnabledEffectsInTree = (nodes: readonly SceneNode[]): boolean =>
   nodes.some((node) => {
     if ("effects" in node && hasEnabledEffects(node.effects)) return true;
@@ -79,6 +92,7 @@ type RenderRecord = {
   node: SceneNode;
   wrapper: Container;
   content: Container;
+  source: Container;
   childrenContainer: Container;
 };
 
@@ -552,18 +566,21 @@ export class DesignRenderer {
   }
 
   hitTestNode(point: RendererPoint): string | undefined {
+    return this.hitTestNodes(point)[0];
+  }
+
+  hitTestNodes(point: RendererPoint): string[] {
     const entries = [...this.#records.entries()].reverse();
-    return entries.find(([, record]) => {
-      if (record.node.type === "adjustment" || !record.node.visible)
-        return false;
+    return entries.flatMap(([nodeId, record]) => {
+      if (record.node.type === "adjustment" || !record.node.visible) return [];
       const bounds = record.wrapper.getBounds();
-      return (
-        point.x >= bounds.x &&
+      return point.x >= bounds.x &&
         point.x <= bounds.x + bounds.width &&
         point.y >= bounds.y &&
         point.y <= bounds.y + bounds.height
-      );
-    })?.[0];
+        ? [nodeId]
+        : [];
+    });
   }
 
   getNodeState(nodeId: string): RendererNodeState | undefined {
@@ -1064,14 +1081,22 @@ export class DesignRenderer {
     applyTransform(wrapper, node.transform);
     const content = new Container();
     wrapper.addChild(content);
-    const record = { node, wrapper, content, childrenContainer: content };
+    const source = new Container();
+    content.addChild(source);
+    const record = {
+      node,
+      wrapper,
+      content,
+      source,
+      childrenContainer: source,
+    };
     this.#records.set(node.id, record);
 
     switch (node.type) {
       case "group":
         for (const child of node.children) {
           if (child.type !== "adjustment")
-            content.addChild(await this.#buildNode(child));
+            source.addChild(await this.#buildNode(child));
         }
         break;
       case "rectangle": {
@@ -1096,7 +1121,7 @@ export class DesignRenderer {
           node.transform.height,
           [this.#frame!.id, node.id, "stroke"],
         );
-        content.addChild(graphics);
+        source.addChild(graphics);
         break;
       }
       case "ellipse": {
@@ -1121,27 +1146,32 @@ export class DesignRenderer {
           node.transform.height,
           [this.#frame!.id, node.id, "stroke"],
         );
-        content.addChild(graphics);
+        source.addChild(graphics);
         break;
       }
       case "vectorPath": {
         const graphics = new Graphics();
+        const evenOddPath =
+          node.fillRule === "evenodd"
+            ? new GraphicsPath(undefined, true)
+            : undefined;
+        const path = evenOddPath ?? graphics;
         for (const command of node.commands) {
           switch (command.kind) {
             case "move":
-              graphics.moveTo(
+              path.moveTo(
                 command.to.x * node.transform.width,
                 command.to.y * node.transform.height,
               );
               break;
             case "line":
-              graphics.lineTo(
+              path.lineTo(
                 command.to.x * node.transform.width,
                 command.to.y * node.transform.height,
               );
               break;
             case "cubic":
-              graphics.bezierCurveTo(
+              path.bezierCurveTo(
                 command.control1.x * node.transform.width,
                 command.control1.y * node.transform.height,
                 command.control2.x * node.transform.width,
@@ -1150,13 +1180,33 @@ export class DesignRenderer {
                 command.to.y * node.transform.height,
               );
               break;
+            case "quadratic":
+              path.quadraticCurveTo(
+                command.control.x * node.transform.width,
+                command.control.y * node.transform.height,
+                command.to.x * node.transform.width,
+                command.to.y * node.transform.height,
+              );
+              break;
+            case "arc":
+              path.arcToSvg(
+                command.radius.x * node.transform.width,
+                command.radius.y * node.transform.height,
+                command.rotation,
+                command.largeArc ? 1 : 0,
+                command.sweep ? 1 : 0,
+                command.to.x * node.transform.width,
+                command.to.y * node.transform.height,
+              );
+              break;
             case "close":
-              graphics.closePath();
+              path.closePath();
               break;
             default:
               assertNever(command, "vector renderer command switch");
           }
         }
+        if (evenOddPath) graphics.path(evenOddPath);
         if (node.fill)
           graphics.fill(
             this.#paint(
@@ -1167,20 +1217,20 @@ export class DesignRenderer {
             ),
           );
         this.#vectorStroke(graphics, node);
-        content.addChild(graphics);
+        source.addChild(graphics);
         break;
       }
       case "rasterImage": {
-        const source = await this.#loadAssetTexture(node.assetId);
-        let texture = source;
+        const assetTexture = await this.#loadAssetTexture(node.assetId);
+        let texture = assetTexture;
         if (node.crop) {
           texture = new Texture({
-            source: source.source,
+            source: assetTexture.source,
             frame: new Rectangle(
-              node.crop.x * source.width,
-              node.crop.y * source.height,
-              node.crop.width * source.width,
-              node.crop.height * source.height,
+              node.crop.x * assetTexture.width,
+              node.crop.y * assetTexture.height,
+              node.crop.width * assetTexture.width,
+              node.crop.height * assetTexture.height,
             ),
           });
           this.#trackGeneratedTexture(texture, node.id);
@@ -1192,11 +1242,11 @@ export class DesignRenderer {
           node.transform.width,
           node.transform.height,
         );
-        content.addChild(sprite);
+        source.addChild(sprite);
         const clip = new Graphics()
           .rect(0, 0, node.transform.width, node.transform.height)
           .fill({ color: 0xffffff });
-        content.addChild(clip);
+        source.addChild(clip);
         sprite.setMask({ mask: clip });
         break;
       }
@@ -1205,7 +1255,7 @@ export class DesignRenderer {
         const sprite = new Sprite(texture);
         sprite.width = node.transform.width;
         sprite.height = node.transform.height;
-        content.addChild(sprite);
+        source.addChild(sprite);
         break;
       }
       case "text": {
@@ -1216,7 +1266,7 @@ export class DesignRenderer {
           );
           for (const fragment of layout.fragments) {
             const text = new Text({
-              text: fragment.text,
+              text: directionalFragment(node, fragment.text),
               style: new TextStyle(richTextStyleOptions(fragment.style)),
             });
             text.x = fragment.x;
@@ -1244,36 +1294,36 @@ export class DesignRenderer {
             rich.y = (node.transform.height - layout.height) / 2;
           if (node.typography.verticalAlignment === "bottom")
             rich.y = node.transform.height - layout.height;
-          content.addChild(rich);
+          source.addChild(rich);
           if (node.textBox.overflow === "clip") {
             const clip = new Graphics()
               .rect(0, 0, node.transform.width, node.transform.height)
               .fill({ color: 0xffffff });
-            content.addChild(clip);
+            source.addChild(clip);
             rich.setMask({ mask: clip });
           }
           break;
         }
         const style = this.#textStyle(node);
-        const text = new Text({ text: node.text, style });
+        const text = new Text({ text: directionalText(node), style });
         text.alpha = node.typography.opacity;
         const measuredHeight = text.height;
         if (node.typography.verticalAlignment === "middle")
           text.y = (node.transform.height - measuredHeight) / 2;
         if (node.typography.verticalAlignment === "bottom")
           text.y = node.transform.height - measuredHeight;
-        content.addChild(text);
+        source.addChild(text);
         if (node.textBox.overflow === "clip") {
           const clip = new Graphics()
             .rect(0, 0, node.transform.width, node.transform.height)
             .fill({ color: 0xffffff });
-          content.addChild(clip);
+          source.addChild(clip);
           text.setMask({ mask: clip });
         }
         break;
       }
       case "mask": {
-        const source = await this.#buildNode(node.maskSource);
+        const maskSource = await this.#buildNode(node.maskSource);
         const masked = new Container();
         record.childrenContainer = masked;
         for (const child of node.children) {
@@ -1281,15 +1331,22 @@ export class DesignRenderer {
             masked.addChild(await this.#buildNode(child));
         }
         if (node.mode === "luminance")
-          source.filters = [luminanceToAlphaFilter()];
-        content.addChild(source, masked);
-        masked.setMask({ mask: source, inverse: node.inverted });
+          maskSource.filters = [luminanceToAlphaFilter()];
+        source.addChild(maskSource, masked);
+        masked.setMask({ mask: maskSource, inverse: node.inverted });
         break;
       }
       case "adjustment":
-        content.visible = false;
+        source.visible = false;
         break;
     }
+
+    if (
+      node.type !== "group" &&
+      node.type !== "mask" &&
+      node.type !== "adjustment"
+    )
+      source.alpha = node.fillOpacity ?? 1;
 
     if (
       node.type === "group" &&
@@ -1513,12 +1570,17 @@ export class DesignRenderer {
         );
         const width = Math.max(1, node.transform.width);
         const height = Math.max(1, node.transform.height);
+        const fillOpacity =
+          node.type === "group" || node.type === "mask"
+            ? 1
+            : (node.fillOpacity ?? 1);
+        record.source.alpha = 1;
         const sourceTexture = enabledEffects.some(
           (effect) => effect.type !== "blur",
         )
           ? this.#trackGeneratedTexture(
               this.renderer.generateTexture({
-                target: record.content,
+                target: record.source,
                 frame: new Rectangle(0, 0, width, height),
                 resolution: this.#renderResolution,
                 antialias: true,
@@ -1547,6 +1609,7 @@ export class DesignRenderer {
               sprite.height = Math.max(1, height + effect.spread * 2);
               sprite.tint = solidColorNumber(effect.color);
               sprite.alpha = effect.opacity;
+              sprite.blendMode = (effect.blendMode ?? "normal") as never;
               if (effect.blur > 0) sprite.filters = [blur(effect.blur)];
               record.wrapper.addChildAt(sprite, outerEffectIndex);
               outerEffectIndex += 1;
@@ -1566,6 +1629,7 @@ export class DesignRenderer {
               sprite.height = Math.max(1, height + effect.spread * 2);
               sprite.tint = solidColorNumber(effect.color);
               sprite.alpha = effect.opacity;
+              sprite.blendMode = (effect.blendMode ?? "normal") as never;
               if (effect.blur > 0) sprite.filters = [blur(effect.blur)];
               const mask = new Sprite(texture);
               mask.renderable = false;
@@ -1581,8 +1645,8 @@ export class DesignRenderer {
             }
             case "blur":
               if (effect.radius > 0)
-                record.content.filters = [
-                  ...(record.content.filters ?? []),
+                record.source.filters = [
+                  ...(record.source.filters ?? []),
                   blur(effect.radius),
                 ];
               break;
@@ -1599,6 +1663,7 @@ export class DesignRenderer {
                   ]),
                 );
               overlay.alpha = effect.opacity;
+              overlay.blendMode = (effect.blendMode ?? "normal") as never;
               mask.renderable = false;
               record.content.addChild(overlay, mask);
               overlay.filters = [
@@ -1613,6 +1678,7 @@ export class DesignRenderer {
               assertNever(effect, "effect renderer switch");
           }
         }
+        record.source.alpha = fillOpacity;
       }
       if (node.type === "mask") {
         visit(node.maskSource);

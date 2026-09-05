@@ -1,3 +1,8 @@
+import {
+  protectPrivatePath,
+  isPrivateFile,
+  pathIsInside,
+} from "../../../scripts/platform.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { closeSync, constants, openSync } from "node:fs";
@@ -45,7 +50,8 @@ const parseDescriptor = async (
   descriptorPath: string,
 ): Promise<RuntimeDescriptor | undefined> => {
   const info = await stat(descriptorPath).catch(() => undefined);
-  if (!info?.isFile() || (info.mode & 0o077) !== 0) return undefined;
+  if (!info?.isFile() || !(await isPrivateFile(descriptorPath)))
+    return undefined;
   const descriptor = await readFile(descriptorPath, "utf8")
     .then((value) => JSON.parse(value) as RuntimeDescriptor)
     .catch(() => undefined);
@@ -54,6 +60,7 @@ const parseDescriptor = async (
     descriptor.schemaVersion !== 1 ||
     !descriptor.runtimeId ||
     !descriptor.workspaceId ||
+    typeof descriptor.workspacePath !== "string" ||
     !descriptor.workspacePath ||
     !descriptor.baseUrl ||
     !descriptor.capabilityToken ||
@@ -84,7 +91,9 @@ export const descriptorForWorkspace = async (
 ): Promise<RuntimeDescriptor | undefined> => {
   const requested = await canonicalWorkspace(workspacePath);
   return (await listActiveDescriptors()).find(
-    (descriptor) => descriptor.workspacePath === requested,
+    (descriptor) =>
+      pathIsInside(descriptor.workspacePath, requested) &&
+      pathIsInside(requested, descriptor.workspacePath),
   );
 };
 
@@ -95,14 +104,18 @@ const runtimeHeaders = (descriptor: RuntimeDescriptor): Headers =>
     "x-design-workspace-id": descriptor.workspaceId,
   });
 
-const runtimeRequest = async <T>(
+export const runtimeRequest = async <T>(
   descriptor: RuntimeDescriptor,
   route: string,
   init: RequestInit = {},
 ): Promise<T> => {
+  const headers = new Headers(init.headers);
+  for (const [key, value] of runtimeHeaders(descriptor))
+    headers.set(key, value);
+  if (init.body) headers.set("content-type", "application/json");
   const response = await globalThis.fetch(`${descriptor.baseUrl}${route}`, {
     ...init,
-    headers: runtimeHeaders(descriptor),
+    headers,
   });
   if (!response.ok) {
     const body = await response.text().catch(() => response.statusText);
@@ -145,7 +158,7 @@ export const openRuntimeStudio = async (
   });
 };
 
-const allocateLoopbackPort = async (): Promise<number> =>
+export const allocateLoopbackPort = async (): Promise<number> =>
   new Promise((resolve, reject) => {
     const server = createServer();
     server.once("error", reject);
@@ -183,6 +196,7 @@ const launcherLogPath = async (workspacePath: string): Promise<string> => {
     process.env.ADR_LAUNCHER_LOG_DIRECTORY ??
     path.join(homedir(), ".design-runtime", "launcher-logs");
   await mkdir(directory, { recursive: true, mode: 0o700 });
+  await protectPrivatePath(directory);
   const key = createHash("sha256")
     .update(workspacePath)
     .digest("hex")
@@ -214,14 +228,20 @@ export const startRuntimeDetached = async (input: {
     [input.cliPath, "dev", workspacePath, "--no-open", "--port", String(port)],
     {
       detached: true,
+      windowsHide: true,
       env: process.env,
       stdio: ["ignore", log, log],
     },
   );
+  let startupError: Error | undefined;
+  child.once("error", (error) => {
+    startupError = error;
+  });
   child.unref();
   closeSync(log);
 
-  for (let attempt = 0; attempt < 300; attempt += 1) {
+  const startupDeadline = Date.now() + 30_000;
+  while (Date.now() < startupDeadline) {
     const descriptor = await descriptorForWorkspace(workspacePath);
     if (descriptor && descriptor.pid === child.pid) {
       try {
@@ -235,10 +255,14 @@ export const startRuntimeDetached = async (input: {
         // The descriptor is written before the HTTP server is ready.
       }
     }
-    if (!child.pid || !processExists(child.pid)) break;
+    if (startupError || !child.pid || !processExists(child.pid)) break;
     await wait(100);
   }
 
+  if (startupError)
+    throw new Error("Runtime process could not be started.", {
+      cause: startupError,
+    });
   const logTail = await readFile(logPath, "utf8")
     .then((value) => value.slice(-4_000))
     .catch(() => "");
@@ -265,7 +289,8 @@ export const stopRuntime = async (
       { cause: error },
     );
   }
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  const shutdownDeadline = Date.now() + 10_000;
+  while (Date.now() < shutdownDeadline) {
     const active = await descriptorForWorkspace(canonical);
     if (!active || active.runtimeId !== descriptor.runtimeId)
       return {

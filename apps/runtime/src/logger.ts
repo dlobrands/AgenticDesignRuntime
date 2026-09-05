@@ -1,4 +1,5 @@
-import { open, readdir, rename, rm, stat } from "node:fs/promises";
+import { renameWithRetry as rename } from "../../../scripts/platform.mjs";
+import { open, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { appendJsonLine, ensureDirectory, writeJsonAtomic } from "./fs-safe.js";
 import type { RuntimeMetricState } from "./types.js";

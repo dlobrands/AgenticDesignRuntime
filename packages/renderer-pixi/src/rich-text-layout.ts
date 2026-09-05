@@ -113,14 +113,17 @@ const rangesForText = (
 ): Array<{ start: number; end: number; newline: boolean }> => {
   if (wrapping === "character") {
     const result: Array<{ start: number; end: number; newline: boolean }> = [];
-    let offset = 0;
-    for (const character of text) {
+    const segmenter = new Intl.Segmenter(undefined, {
+      granularity: "grapheme",
+    });
+    for (const segment of segmenter.segment(text)) {
+      const character = segment.segment;
+      const offset = segment.index;
       result.push({
         start: offset,
         end: offset + character.length,
         newline: character === "\n",
       });
-      offset += character.length;
     }
     return result;
   }
@@ -234,7 +237,15 @@ export const layoutRichTextNode = (
         : 0;
     const justifyGap = justify > 0 ? available / justify : 0;
     let x = alignOffset;
-    for (const piece of line.pieces) {
+    const direction =
+      node.typography.direction === "rtl" ||
+      (node.typography.direction !== "ltr" &&
+        /[\u0590-\u08FF]/u.test(node.text))
+        ? "rtl"
+        : "ltr";
+    const pieces =
+      direction === "rtl" ? [...line.pieces].reverse() : line.pieces;
+    for (const piece of pieces) {
       fragments.push({
         text: piece.text,
         x,

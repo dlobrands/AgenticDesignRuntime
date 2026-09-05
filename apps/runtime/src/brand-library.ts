@@ -1,6 +1,7 @@
+import { renameWithRetry as rename } from "../../../scripts/platform.mjs";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { copyFile, readFile, rename, rm, stat } from "node:fs/promises";
+import { copyFile, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   BrandKitRecordSchema,

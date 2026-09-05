@@ -96,6 +96,7 @@ const nodeProperties = (
     "enabled",
     "targetId",
     "values",
+    "layout",
   ] as const;
   const record = node as unknown as Record<string, unknown>;
   for (const key of broadProperties)

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { runCommandSync as execFileSync } from "./platform.mjs";
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -150,10 +150,10 @@ await writeFile(
       },
       releaseNotes: "UNBOUND_APPROVED_RELEASE_NOTES",
       migration: {
-        required: false,
-        fromWorkspaceSchema: metadata.workspaceSchemaVersion,
+        required: metadata.workspaceSchemaVersion > 1,
+        fromWorkspaceSchema: Math.max(1, metadata.workspaceSchemaVersion - 1),
         toWorkspaceSchema: metadata.workspaceSchemaVersion,
-        reversible: false,
+        reversible: metadata.workspaceSchemaVersion > 1,
       },
     },
     null,
@@ -215,3 +215,17 @@ if (
     mode: 0o600,
   });
 }
+
+const windowsTemplate = JSON.parse(
+  await readFile(
+    path.join(release, "trusted-update-manifest.template.json"),
+    "utf8",
+  ),
+);
+windowsTemplate.platform = "win32";
+windowsTemplate.architecture = "x64";
+await writeFile(
+  path.join(release, "trusted-update-manifest.windows.template.json"),
+  `${JSON.stringify(windowsTemplate, null, 2)}\n`,
+  { mode: 0o600 },
+);

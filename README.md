@@ -2,7 +2,8 @@
 
 A local, agent-native visual design runtime for creating and revising editable layered graphics through one canonical transaction engine. Designers use the production Studio, agents use MCP or the typed HTTP client, and every accepted mutation becomes one revision with a stable semantic hash.
 
-This repository ships V1 as `1.0.2`; distribution labels are not part of the product architecture.
+The current source package is the local `2.0.0` release candidate; the latest
+public release remains `1.0.2`. No v2 tag or publication exists yet.
 
 The public repository is a source-visible proprietary production mirror. The
 license permits personal, non-commercial evaluation; it is not an open-source
@@ -17,7 +18,7 @@ Public scene and intent contracts include [optional rich-text spans](./docs/RICH
 Studio (React + Pixi) ─────────┐
 Typed client ──────────────────┼─> Fastify runtime ─> transaction engine ─> atomic workspace files
 Direct MCP stdio adapter ──────┤          │                       │
-Codex plugin + $agentic-design ┘          └─> Chromium/Pixi export worker
+Codex plugin + four ADR skills ┘          └─> Chromium/Pixi export worker
 ```
 
 - `packages/core`: side-effect-free Zod domain schemas, typed operations, simulation, inverses, validation, hashing, diffs, and history reconstruction.
@@ -26,7 +27,7 @@ Codex plugin + $agentic-design ┘          └─> Chromium/Pixi export worker
 - `apps/runtime`: workspace ownership, persistence, recovery, protected API, imports, file watching, diagnostics, and export orchestration.
 - `apps/studio`: dense keyboard-accessible precision-instrument UI with separate canonical, local UI, and interaction-draft state.
 - `apps/mcp`: thin protocol-compliant stdio adapter; it never edits workspace files directly.
-- `plugins/agentic-design-runtime`: private Codex plugin with the `$agentic-design` workflow, workspace-aware MCP server, and its exact compatible runtime package.
+- `plugins/agentic-design-runtime`: Codex plugin with focused creation, review, Brand-system, and runtime-operations skills, one workspace-aware MCP server, and its exact compatible runtime package.
 
 The locked public contracts and security boundaries are in [blueprint.md](./blueprint.md).
 
@@ -36,7 +37,7 @@ The stable property and operation contract is mapped to direct, read-only, or ag
 
 Optional inline typography, deterministic V1 migration, direct range editing, conflict semantics, and renderer/export behavior are defined in [Rich Text Span Contract](./docs/RICH_TEXT_SPANS.md).
 
-Canonical PNG/JPEG/WebP encoding, high-resolution scaling, alpha and JPEG matte behavior, multi-frame preflight, artifact naming, and project-scoped named presets are defined in [Export Contract](./docs/EXPORT_CONTRACT.md).
+Canonical PNG/JPEG/WebP, SVG, and flattened ICC-managed CMYK PDF behavior, multi-frame preflight, artifact naming, and project-scoped named presets are defined in [Export Contract](./docs/EXPORT_CONTRACT.md).
 
 Bounded native paths, stable point identity, exact compatible SVG conversion, accessible editing, and renderer/export behavior are defined in [Native Vector Path Contract](./docs/VECTOR_PATHS.md).
 
@@ -64,7 +65,7 @@ Stable node/canvas binding metadata, frame-scoped palette modes, exact immutable
 
 ## Requirements
 
-- macOS on Apple Silicon
+- macOS on Apple Silicon or Windows 11 x64
 - Node.js 24.18.0 reference release (`engines.node` remains `>=22`)
 - pnpm 10.34.5
 - Playwright 1.61.1 Chromium
@@ -93,7 +94,7 @@ The equivalent optional overrides are `DESIGN_RUNTIME_WORKSPACE`, `DESIGN_RUNTIM
 
 ## Public installation
 
-The supported production target is macOS 14+ on Apple Silicon. Install an exact
+The supported platform targets are macOS 14+ on Apple Silicon and native Windows 11 x64. Windows developer setup and native acceptance requirements are documented in [Windows support](./docs/WINDOWS_SUPPORT.md). Install an exact
 GitHub Release with its included checksum-verifying installer, or install the
 matching npm packages after verifying the release version:
 
@@ -124,9 +125,9 @@ pnpm pack:release
 pnpm plugin:install:personal
 ```
 
-Start a new Codex task in any client repository and invoke `$agentic-design` with the design brief. The agent will:
+Start a new Codex task after installation. Use `$agentic-design` for creation/revision, `$agentic-design-review` for read-only review, `$agentic-brand-system` for Brand governance, and `$agentic-design-ops` for installation, migration, recovery, updates, and shutdown.
 
-1. Install the plugin-pinned `1.0.2` runtime and Chromium when absent.
+1. Install the plugin-pinned `2.0.0` runtime and Chromium when absent.
 2. Create or reconnect the visible `<client-root>/design-runtime` workspace.
 3. Load the bundled design-intelligence core and only the task-specific references needed for briefing, hierarchy, composition, image placement, typography, color, Brand, format, or critique.
 4. Build through typed preview and commit operations, compare structural previews when the assignment warrants exploration, return PNG drafts in the task, and open the local authenticated Studio after the first draft.
@@ -143,7 +144,13 @@ Brand Kits are workspace-owned immutable revisions. Each revision contains named
 
 Studio exposes only the everyday Brand choices. The typed client and MCP add inspection, creation, exact pin/detach, and palette/type/logo/template application. Pin and apply operations support preview or commit; applying a definition expands it into ordinary validated scene nodes with fresh IDs, not executable or live-linked content.
 
-Existing workspaces remain workspace-schema version 1. The optional project pin field is read without rewriting older project files; Brand Library storage is created under `.design-runtime/brand-kits` only when used. Each library revision owns and re-verifies its bytes and hash chain at startup. Creating a revision backs up the prior index, while detaching a project changes only its pin and leaves existing frame content untouched. Rolling back means pinning a known prior immutable revision explicitly.
+Runtime 2 edits workspace schema 2 only. Inspect and migrate a stopped schema-1 workspace explicitly; migration stages and validates transformed history, retains the complete prior project tree, and permits rollback only before the first schema-2 canonical revision changes:
+
+```bash
+design-runtime workspace migration preview /absolute/workspace/path
+design-runtime workspace migration commit /absolute/workspace/path
+design-runtime workspace migration rollback /absolute/workspace/path
+```
 
 ## Verification
 
@@ -168,7 +175,7 @@ pnpm --filter @tva-agentic-design/runtime exec tsx src/cli.ts diagnostics export
 
 ## Packed release
 
-Build the versioned macOS Apple Silicon bundle and verify all installed binaries plus the self-contained plugin in an isolated project:
+Build the versioned macOS Apple Silicon and Windows x64 bundles and verify all installed binaries plus the self-contained plugin in an isolated project:
 
 ```bash
 pnpm pack:release
@@ -176,7 +183,7 @@ pnpm verify:packed
 cd release && shasum -a 256 -c SHA256SUMS
 ```
 
-The bundle contains the runtime and MCP packages, self-contained Codex plugin, `$agentic-design` skill, versioned design-intelligence curriculum, production Studio assets, IBM Plex interface fonts, compatibility metadata, checksums, installation doctor, recoverable installer/uninstaller, and a machine-readable release manifest.
+The bundle contains the runtime and MCP packages, self-contained Codex plugin, four ADR skills, versioned design-intelligence curriculum, production Studio assets, IBM Plex interface fonts, compatibility metadata, checksums, installation doctor, recoverable installer/uninstaller, and a machine-readable release manifest.
 
 ## Trusted updates
 

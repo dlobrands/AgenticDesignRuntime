@@ -6,6 +6,7 @@ import type {
 
 export type EditableSvgVector = {
   commands: VectorPathCommand[];
+  fillRule?: "nonzero" | "evenodd";
   fill?: ShapeFill;
   stroke?: Stroke;
 };
@@ -74,7 +75,7 @@ const parseCommands = (
   while (index < tokens.length) {
     const token = tokens[index];
     if (typeof token === "string") {
-      if (!/[mMlLcCzZ]/.test(token)) return undefined;
+      if (!/[mMlLcCqQaAzZ]/.test(token)) return undefined;
       activeCommand = token;
       index += 1;
     }
@@ -105,6 +106,63 @@ const parseCommands = (
         subpathStart = target;
         activeCommand = relative ? "l" : "L";
       }
+      continue;
+    }
+    if (kind === "q") {
+      const control = point(relative);
+      const target = point(relative);
+      if (!control || !target) return undefined;
+      const normalizedControl = normalizePoint(control, viewBox);
+      const normalizedTarget = normalizePoint(target, viewBox);
+      if (!normalizedControl || !normalizedTarget) return undefined;
+      commands.push({
+        id: `path-${commands.length + 1}`,
+        kind: "quadratic",
+        control: normalizedControl,
+        to: normalizedTarget,
+      });
+      current = target;
+      continue;
+    }
+    if (kind === "a") {
+      const radiusX = number();
+      const radiusY = number();
+      const rotation = number();
+      const largeArc = number();
+      const sweep = number();
+      const target = point(relative);
+      if (
+        radiusX === undefined ||
+        radiusY === undefined ||
+        rotation === undefined ||
+        !target ||
+        ![0, 1].includes(largeArc ?? -1) ||
+        ![0, 1].includes(sweep ?? -1)
+      )
+        return undefined;
+      const normalizedTarget = normalizePoint(target, viewBox);
+      const radius = {
+        x: Math.abs(radiusX) / viewBox.width,
+        y: Math.abs(radiusY) / viewBox.height,
+      };
+      if (
+        !normalizedTarget ||
+        radius.x <= 0 ||
+        radius.x > 1 ||
+        radius.y <= 0 ||
+        radius.y > 1
+      )
+        return undefined;
+      commands.push({
+        id: `path-${commands.length + 1}`,
+        kind: "arc",
+        radius,
+        rotation,
+        largeArc: largeArc === 1,
+        sweep: sweep === 1,
+        to: normalizedTarget,
+      });
+      current = target;
       continue;
     }
     const control1 = point(relative);
@@ -161,7 +219,6 @@ export const editableSvgVector = (input: {
     attributes["clip-path"] ||
     attributes.mask ||
     attributes.filter ||
-    attributes["fill-rule"] === "evenodd" ||
     attributes["vector-effect"]
   )
     return undefined;
@@ -236,7 +293,16 @@ export const editableSvgVector = (input: {
           : {}),
       }
     : undefined;
+  const fillRule = attributes["fill-rule"];
+  if (fillRule && fillRule !== "nonzero" && fillRule !== "evenodd")
+    return undefined;
+  const normalizedFillRule = fillRule as "nonzero" | "evenodd" | undefined;
   return fill || stroke
-    ? { commands, ...(fill ? { fill } : {}), ...(stroke ? { stroke } : {}) }
+    ? {
+        commands,
+        ...(normalizedFillRule ? { fillRule: normalizedFillRule } : {}),
+        ...(fill ? { fill } : {}),
+        ...(stroke ? { stroke } : {}),
+      }
     : undefined;
 };

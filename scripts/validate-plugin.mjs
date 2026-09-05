@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,46 @@ const plugin = path.resolve(
   process.argv[2] ?? path.join(root, "plugins", "agentic-design-runtime"),
 );
 
+const updateTools = [
+  "update_check",
+  "update_fetch",
+  "update_apply",
+  "update_rollback",
+];
+const workspaceMigrationTools = [
+  "inspect_workspace_migration",
+  "preview_workspace_migration",
+  "commit_workspace_migration",
+  "rollback_workspace_migration",
+];
+const sortedUnique = (values) => [...new Set(values)].sort();
+const extractRegisteredTools = (source) => {
+  const tools = [...source.matchAll(/registerTool\(\s*["']([^"']+)["']/g)].map(
+    (match) => match[1],
+  );
+  if (source.includes("`update_${action}`")) tools.push(...updateTools);
+  if (source.includes("`${action}_workspace_migration`"))
+    tools.push(...workspaceMigrationTools);
+  return sortedUnique(tools);
+};
+const assertExactSet = (actual, expected, label) => {
+  const missing = expected.filter((value) => !actual.includes(value));
+  const extra = actual.filter((value) => !expected.includes(value));
+  if (missing.length || extra.length)
+    throw new Error(
+      `${label} differs from tool-surface.json. Missing: ${missing.join(", ") || "none"}. Extra: ${extra.join(", ") || "none"}.`,
+    );
+};
+const markdownFiles = async (directory) => {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...(await markdownFiles(target)));
+    else if (entry.isFile() && entry.name.endsWith(".md")) files.push(target);
+  }
+  return files;
+};
+
 const requiredFiles = [
   ".codex-plugin/plugin.json",
   ".mcp.json",
@@ -21,6 +61,8 @@ const requiredFiles = [
   "skills/agentic-design/references/recovery.md",
   "skills/agentic-design/references/visual-qa.md",
   "design-intelligence-manifest.json",
+  "tool-surface.json",
+  "plugin-evals.json",
 ];
 for (const relative of requiredFiles) {
   const info = await stat(path.join(plugin, relative)).catch(() => undefined);
@@ -34,8 +76,20 @@ if (manifest.name !== "agentic-design-runtime")
   throw new Error("Plugin name must remain agentic-design-runtime.");
 if (!/^\d+\.\d+\.\d+(?:\+[0-9A-Za-z.-]+)?$/.test(manifest.version))
   throw new Error("Plugin version is not valid release or cachebuster semver.");
+if (manifest.version.split("+")[0] !== productMetadata.pluginVersion)
+  throw new Error("Plugin base version does not match product metadata.");
 if (manifest.skills !== "./skills/" || manifest.mcpServers !== "./.mcp.json")
   throw new Error("Plugin component paths are not canonical.");
+for (const field of ["composerIcon", "logo", "logoDark"])
+  if (
+    typeof manifest.interface?.[field] !== "string" ||
+    !(
+      await stat(path.join(plugin, manifest.interface[field])).catch(
+        () => undefined,
+      )
+    )?.isFile()
+  )
+    throw new Error(`Plugin interface asset is missing: ${field}.`);
 
 const mcp = JSON.parse(await readFile(path.join(plugin, ".mcp.json"), "utf8"));
 const server = mcp.mcpServers?.["agentic-design-runtime"];
@@ -54,6 +108,122 @@ if (!skill.startsWith("---\nname: agentic-design\n"))
   throw new Error("Skill frontmatter is invalid.");
 if (skill.includes("[TODO:"))
   throw new Error("Skill contains TODO placeholders.");
+
+const expectedSkills = [
+  "agentic-brand-system",
+  "agentic-design",
+  "agentic-design-ops",
+  "agentic-design-review",
+];
+const discoveredSkills = [];
+for (const entry of await readdir(path.join(plugin, "skills"), {
+  withFileTypes: true,
+})) {
+  if (!entry.isDirectory()) continue;
+  const skillPath = path.join(plugin, "skills", entry.name, "SKILL.md");
+  if (!(await stat(skillPath).catch(() => undefined))?.isFile()) continue;
+  const contents = await readFile(skillPath, "utf8");
+  if (!contents.startsWith(`---\nname: ${entry.name}\n`))
+    throw new Error(
+      `Skill frontmatter does not match its folder: ${entry.name}.`,
+    );
+  if (contents.includes("[TODO:"))
+    throw new Error(`Skill contains TODO placeholders: ${entry.name}.`);
+  const agentMetadata = path.join(
+    plugin,
+    "skills",
+    entry.name,
+    "agents",
+    "openai.yaml",
+  );
+  if (!(await stat(agentMetadata).catch(() => undefined))?.isFile())
+    throw new Error(`Skill UI metadata is missing: ${entry.name}.`);
+  discoveredSkills.push(entry.name);
+}
+assertExactSet(discoveredSkills.sort(), expectedSkills, "Plugin skill surface");
+
+const pluginEvals = JSON.parse(
+  await readFile(path.join(plugin, "plugin-evals.json"), "utf8"),
+);
+if (pluginEvals.schemaVersion !== 1)
+  throw new Error("Plugin eval manifest schema is invalid.");
+assertExactSet(
+  Object.keys(pluginEvals.skills ?? {}).sort(),
+  expectedSkills,
+  "Plugin eval skill coverage",
+);
+for (const skillName of expectedSkills)
+  for (const lane of ["explicit", "indirect", "negative"])
+    if (
+      !Array.isArray(pluginEvals.skills[skillName]?.[lane]) ||
+      pluginEvals.skills[skillName][lane].length !== 5 ||
+      pluginEvals.skills[skillName][lane].some(
+        (prompt) => typeof prompt !== "string" || !prompt.trim(),
+      )
+    )
+      throw new Error(
+        `Plugin evals require five non-empty ${lane} prompts for ${skillName}.`,
+      );
+if (
+  !Array.isArray(pluginEvals.crossLane) ||
+  pluginEvals.crossLane.length !== 20 ||
+  pluginEvals.crossLane.some(
+    (entry) =>
+      typeof entry?.prompt !== "string" ||
+      !entry.prompt.trim() ||
+      !Array.isArray(entry.expectedSkills) ||
+      entry.expectedSkills.length === 0 ||
+      entry.expectedSkills.some((name) => !expectedSkills.includes(name)),
+  )
+)
+  throw new Error("Plugin evals require twenty valid cross-lane prompts.");
+
+const toolSurface = JSON.parse(
+  await readFile(path.join(plugin, "tool-surface.json"), "utf8"),
+);
+if (
+  toolSurface.schemaVersion !== 1 ||
+  !Array.isArray(toolSurface.directTools) ||
+  !Array.isArray(toolSurface.agentOnlyTools)
+)
+  throw new Error("Plugin tool-surface.json is invalid.");
+const directTools = sortedUnique(toolSurface.directTools);
+const agentOnlyTools = sortedUnique(toolSurface.agentOnlyTools);
+const agentTools = sortedUnique([...directTools, ...agentOnlyTools]);
+if (
+  directTools.length !== toolSurface.directTools.length ||
+  agentOnlyTools.length !== toolSurface.agentOnlyTools.length
+)
+  throw new Error("Plugin tool-surface.json contains duplicate tools.");
+
+const sourceAgentPath = path.join(root, "apps", "mcp", "src", "agent-cli.ts");
+const sourceDirectPath = path.join(root, "apps", "mcp", "src", "cli.ts");
+if (
+  (await stat(sourceAgentPath).catch(() => undefined))?.isFile() &&
+  (await stat(sourceDirectPath).catch(() => undefined))?.isFile()
+) {
+  assertExactSet(
+    extractRegisteredTools(await readFile(sourceAgentPath, "utf8")),
+    agentTools,
+    "Agent MCP source tool surface",
+  );
+  assertExactSet(
+    extractRegisteredTools(await readFile(sourceDirectPath, "utf8")),
+    directTools,
+    "Direct MCP source tool surface",
+  );
+}
+
+const toolLikeReference =
+  /`((?:runtime|update|ensure|list|get|search|validate|audit|migrate|rollback|preview|commit|bind|unbind|apply|create|remove|inspect|assign|reflow|replace|detach|import|wait|stop|open|switch|export)_[a-z0-9_]+)`/g;
+for (const file of await markdownFiles(path.join(plugin, "skills"))) {
+  const contents = await readFile(file, "utf8");
+  for (const match of contents.matchAll(toolLikeReference))
+    if (!agentTools.includes(match[1]))
+      throw new Error(
+        `Skill reference names unavailable agent tool ${match[1]} in ${path.relative(plugin, file)}.`,
+      );
+}
 
 const designIntelligenceManifestPath = path.join(
   plugin,
@@ -145,6 +315,13 @@ if (packed) {
       designIntelligenceManifestSha256
   )
     throw new Error("Packed plugin compatibility metadata is invalid.");
+  assertExactSet(
+    extractRegisteredTools(
+      await readFile(path.join(plugin, "dist", "agent-cli.js"), "utf8"),
+    ),
+    agentTools,
+    "Packed agent MCP tool surface",
+  );
 }
 
 process.stdout.write(`${plugin}\n`);

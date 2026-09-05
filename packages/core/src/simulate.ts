@@ -151,11 +151,11 @@ const componentOverrideProperty = (
       return "crop";
     case "common":
     case "resizeConstraints":
+    case "layout":
     case "templateMetadata":
     case "brandComponentMetadata":
     case "brandBinding":
     case "locking":
-      return undefined;
       return undefined;
     default:
       return assertNever(propertyGroup, "component override property switch");
@@ -220,6 +220,23 @@ const applyUpdateNode = (
       if (operation.value.constraints)
         node.resizeConstraints = clone(operation.value.constraints);
       else delete node.resizeConstraints;
+      return [inverse];
+    }
+    case "layout": {
+      if (node.type !== "group")
+        throw new RuntimeError(
+          "INVALID_PROPERTY_GROUP",
+          "Only groups can own layout-container intent.",
+          { nodeId: node.id },
+        );
+      const inverse: FrameOperation = {
+        kind: "updateNode",
+        nodeId: node.id,
+        propertyGroup: "layout",
+        value: { layout: node.layout ? clone(node.layout) : null },
+      };
+      if (operation.value.layout) node.layout = clone(operation.value.layout);
+      else delete node.layout;
       return [inverse];
     }
     case "templateMetadata": {
@@ -331,10 +348,24 @@ const applyUpdateNode = (
           { nodeId: node.id },
         );
       }
-      const previous: { opacity?: number; blendMode?: string } = {};
+      const previous: {
+        opacity?: number;
+        fillOpacity?: number;
+        blendMode?: string;
+      } = {};
       if (operation.value.opacity !== undefined) {
         previous.opacity = node.opacity;
         node.opacity = operation.value.opacity;
+      }
+      if (operation.value.fillOpacity !== undefined) {
+        if (node.type === "group")
+          throw new RuntimeError(
+            "INVALID_PROPERTY_GROUP",
+            "Groups do not support fill opacity.",
+            { nodeId: node.id },
+          );
+        previous.fillOpacity = node.fillOpacity ?? 1;
+        node.fillOpacity = operation.value.fillOpacity;
       }
       if (operation.value.blendMode !== undefined) {
         previous.blendMode = node.blendMode;
@@ -520,15 +551,21 @@ const applyUpdateNode = (
           "Only vector-path nodes have editable commands.",
           { nodeId: node.id },
         );
-      const previous = clone(node.commands);
+      const previous = {
+        commands: clone(node.commands),
+        fillRule: node.fillRule ?? null,
+      };
       if (operation.value.commands)
         node.commands = clone(operation.value.commands);
+      if (operation.value.fillRule === null) delete node.fillRule;
+      else if (operation.value.fillRule)
+        node.fillRule = operation.value.fillRule;
       return [
         {
           kind: "updateNode",
           nodeId: node.id,
           propertyGroup: "vectorPath",
-          value: { commands: previous },
+          value: previous,
         },
       ];
     }

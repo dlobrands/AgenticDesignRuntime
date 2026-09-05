@@ -1,6 +1,6 @@
 # Native Vector Path Contract
 
-Status: Phase 3 bounded V1 contract, 2026-08-10. Runtime API `1`; workspace schema `1`.
+Status: ADR v2 bounded contract, 2026-08-27. Runtime API `2`; workspace schema `2`.
 
 ## Canonical representation
 
@@ -9,6 +9,8 @@ Status: Phase 3 bounded V1 contract, 2026-08-10. Runtime API `1`; workspace sche
 - `move` with a stable command ID and endpoint;
 - `line` with a stable command ID and endpoint;
 - `cubic` with a stable command ID, two controls, and endpoint;
+- `quadratic` with a stable command ID, control, and endpoint;
+- `arc` with stable ID, normalized radii, rotation, large-arc/sweep flags, and endpoint;
 - `close` with a stable command ID.
 
 A path starts with `move`, contains 2–1024 commands, has at least one drawable segment, and has at least one fill or stroke. Multiple subpaths are valid. Fill and stroke use the same solid/linear/radial paint and dash contracts as canonical shapes. Vector paths may be normal layers or mask sources.
@@ -17,7 +19,7 @@ Creation and editing use existing `createNode` and `updateNode` transactions. Ge
 
 ## Studio behavior
 
-Studio can create a bounded cubic path from the shared command registry. Inspector exposes every endpoint and cubic control as normalized numeric fields, retains command IDs, and supports adding line/cubic points, closing the path, and removing points when the result remains valid. These controls are the keyboard-accessible alternative to a future direct Canvas point tool. Fill, gradient, stroke, dash, effects, transform, hierarchy, and compositing use the existing professional controls.
+Studio exposes every endpoint, quadratic/cubic control, arc radius/rotation/flags, and fill rule as keyboard-accessible fields. It retains command IDs and supports adding line, quadratic, cubic, and arc segments, closing paths, and removing points when the result remains valid.
 
 Each completed point or structure edit submits one canonical revision. Invalid paths are rejected by the normal request schema and simulator; Studio never writes renderer state directly.
 
@@ -26,21 +28,22 @@ Each completed point or structure edit submits one canonical revision. Invalid p
 Every imported SVG still passes the existing active-content and external-reference security policy and is preserved as an asset. In addition, Studio places a single path as an editable `vectorPath` when conversion is exact within the bounded contract:
 
 - exactly one untransformed `<path>` under the SVG root;
-- `M/m`, `L/l`, `C/c`, and `Z/z` commands only;
+- `M/m`, `L/l`, `Q/q`, `C/c`, `A/a`, and `Z/z` commands only;
 - coordinates and cubic controls inside the declared viewBox;
 - direct solid hexadecimal fill/stroke, opacity, width, dash, offset, and cap attributes;
-- no style blocks, transforms, filters, masks, clip paths, even-odd fill, vector effects, or unsupported graphical structure.
+- direct nonzero/even-odd fill rules;
+- no style blocks, arbitrary transforms, filters, masks, clip paths, vector effects, or unsupported graphical structure.
 
 Unsupported but safe SVGs remain ordinary immutable SVG asset layers. Conversion never approximates an unsupported command, silently drops paint, or makes a safe asset import fail. The source SVG asset remains in the project library even when Studio places the editable path.
 
 ## Rendering and export
 
-Pixi traces native line and cubic commands in node-local coordinates. Dashed cubic strokes use a deterministic bounded subdivision for the dash path; solid strokes use the native curve. Fill and stroke gradients share the established node-local paint coordinate space. Preview and export use the same renderer and remain byte-identical in the production E2E fixture.
+Pixi traces native line, quadratic, cubic, and SVG-style arc commands in node-local coordinates. Dashed curves use deterministic bounded subdivision. Vector-only SVG emits the declared safe subset; hybrid SVG records its conservative full-frame raster fallback explicitly.
 
 ## Compatibility and rollback
 
-This is an additive scene-node alternative and operation property group inside schema/API version 1. Existing schema-1 frames are unchanged and require no migration. New runtime/client/plugin packages understand the new alternative; older binaries must not open a workspace after a vector-path frame has been committed. Normal undo/history removes or restores the complete node and stable command IDs. SVG source assets are retained, so a user can delete the editable placement and place the original immutable SVG instead.
+These fields are part of schema/API version 2. Schema-1 workspaces require the explicit stopped-workspace migration; older binaries must not edit schema-2 frames. Normal undo/history restores the exact command and fill-rule state, and source SVG assets remain available.
 
 ## Explicit limits
 
-V1 does not include quadratic/arced paths, arbitrary SVG transforms/styles, editable gradients imported from SVG, boolean operations, variable-width strokes, arbitrary fill rules, a separate vector document, or SVG round-trip export. Those require explicit compatible semantics and proportional renderer/Studio tests before promotion.
+V2 still excludes arbitrary SVG CSS/paint servers/transforms, editable imported gradients, boolean operations, variable-width strokes, unrestricted SVG execution, and a separate vector document.

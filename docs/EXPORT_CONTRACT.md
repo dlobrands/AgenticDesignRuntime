@@ -1,63 +1,30 @@
 # Export contract
 
-AgenticDesignRuntime exports committed canonical frame revisions. Encoding is a derived artifact operation: it never changes a frame, project revision, scene node, or stable ID.
+ADR exports derived artifacts from committed canonical frames without mutating artwork. Every export is revision-bound, collision-safe, owner-only, and written atomically after format-specific validation.
 
-## Formats and dimensions
+## Raster formats
 
-Supported raster formats are PNG, JPEG, and WebP. Export scale is bounded to 0.25×–4×. The pinned Pixi renderer extracts the canonical scene directly at the requested resolution; vector, text, paint, mask, and effect semantics are rendered at that resolution rather than upscaling a 1× bitmap. Output dimensions are exactly `round(canvas width × scale)` by `round(canvas height × scale)`. A request is blocked before rendering when either dimension exceeds the detected WebGL texture, renderbuffer, or configured canvas limit.
+PNG, JPEG, and WebP render the canonical Pixi scene directly at 0.25x-4x. PNG is lossless. JPEG and WebP accept quality 1-100 and default to 90. JPEG always flattens transparency against the explicit/default matte; PNG and WebP retain alpha only for transparent canonical canvases. Encoded bytes are reopened to verify format, dimensions, and alpha.
 
-PNG is lossless and does not accept a quality value. JPEG and WebP accept integer quality 1–100 and default to 90. JPEG has no alpha channel; transparent canonical pixels are flattened against `matteColor`, defaulting to `#FFFFFF`. PNG and WebP retain alpha only when the canonical canvas background is transparent. The Studio states this eligibility before export.
+## SVG
 
-After rendering and encoding, the runtime reopens the bytes and verifies format, dimensions, and required alpha behavior before an owner-only atomic write. The default 1× PNG remains byte-identical to `render-preview`.
+SVG export has two explicit modes:
 
-## Artifact paths and collision behavior
+- `vectorOnly` emits native groups, solid shapes, plain unwrapped text, and bounded ADR vector paths. It fails before writing when raster layers, imported SVG layers, masks, adjustments, effects, non-normal blending, rich text, wrapping, or unsupported paints would make the document unfaithful.
+- `hybrid` finds the highest unsupported root layer, embeds one exact raster of that layer and everything behind it, then emits every safe higher layer natively. It reports every rasterized node ID and whether the result is fully rasterized. This preserves compositing fidelity without mislabeling fallback content as editable vectors.
 
-The backward-compatible default path remains:
+SVG output rejects scripts, external references, arbitrary CSS, unsafe filters, and unbounded executable content. Quadratic curves, elliptical arcs, and nonzero/even-odd fill intent round-trip through ADR's declared safe path subset.
 
-```text
-exports/<frame-slug>-r<revision>.png
-```
+## Generic CMYK PDF
 
-Scaled and lossy variants encode every setting that can change bytes:
+PDF export produces one flattened process-CMYK page. It requires an explicitly imported project ICC profile verified by hash and ICC header/color-space checks. The runtime renders at 72-600 DPI, converts through the selected profile, embeds the four-channel ICCBased image, and writes exact MediaBox, TrimBox, BleedBox, profile ID/hash, optional 0-25 mm bleed, and optional crop marks.
 
-```text
-exports/<slug>-r<revision>-<scale>x-q<quality>.webp
-exports/<slug>-r<revision>-<scale>x-q<quality>-m<rrggbb>.jpg
-```
+This output is not PDF/X. ADR does not claim spot colors, overprint, separations, total-ink limits, editable PDF vectors, font embedding, printer-specific proofing, or guaranteed physical color match. Those unsupported conditions must be handed to the printer or a dedicated prepress workflow.
 
-The `-<scale>x` segment is omitted at 1×. Repeating the exact same canonical revision and settings intentionally replaces the same derived artifact atomically. Different formats, scales, quality values, and JPEG mattes cannot silently collide.
+## Presets and API
 
-## Named presets
+Project export presets store stable ID, unique name, format, scale, and only the settings valid for that format. PDF presets additionally store DPI, ICC profile ID, bleed, and crop-mark intent; SVG presets store mode. Changing presets uses normal project transactions, history, inverses, and revision checks.
 
-Named presets are optional canonical project metadata under `exportPresets`. Each preset has a stable UUID, unique human-readable name, format, scale, optional lossy quality, and optional JPEG matte. `setExportPreset` and `removeExportPreset` are project-scope operations with normal validation, history, inverse operations, revision checks, trusted actor provenance, HTTP/MCP parity, and Studio controls. Existing schema-1 projects without the field load unchanged; no eager migration is required.
+Single-frame and batch HTTP, typed-client, direct-MCP, plugin-MCP, and Studio routes share `ExportSettings`. Batch export preflights every selected frame and renderer limit. Environmental failure after a previous derived artifact finishes is reported precisely; canonical state never changes, and retrying identical settings is idempotent.
 
-Presets contain encoding settings only. Frame selection is intentionally per export so a saved preset cannot begin exporting newly added frames without an explicit choice.
-
-## HTTP and typed client
-
-Single-frame export remains backward compatible:
-
-```http
-POST /api/projects/:projectId/frames/:frameId/export
-{}
-```
-
-The optional body accepts `format`, `scale`, `quality`, and `matteColor`. Omitting the body preserves exact 1× PNG behavior.
-
-Multi-frame export uses:
-
-```http
-POST /api/projects/:projectId/export
-{
-  "frameIds": ["..."],
-  "settings": { "format": "webp", "scale": 2, "quality": 86 }
-}
-```
-
-Frame IDs must be unique. The runtime validates every frame and every scaled output limit before rendering begins. A validation or capacity failure writes no artifact. If an environmental render or filesystem failure occurs after earlier frames finish, the error reports the exact completed artifacts; canonical design state remains unchanged and retry is safe.
-
-The typed client exposes `exportFrame(projectId, frameId, settings?)` and `exportProject(projectId, frameIds, settings?)`. MCP exposes matching `export_frame` and `export_project` tools.
-
-## Deferred formats
-
-SVG export is deferred until the runtime can reject or faithfully express every participating scene semantic; it will not label a rasterized scene as editable SVG. PDF remains deferred until a document, pagination, font embedding, and color-management contract is defined.
+Artifact names include revision plus non-default scale/quality/matte, SVG mode, or PDF DPI/CMYK suffixes so byte-distinct settings cannot silently collide. The backward-compatible bodyless route remains the exact 1x PNG path.

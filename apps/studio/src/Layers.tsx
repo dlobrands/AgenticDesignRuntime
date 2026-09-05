@@ -1,4 +1,10 @@
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import {
   findNodeLocation,
   type AdjustmentNode,
@@ -26,11 +32,13 @@ function LayerRow({
   depth,
   adjustments,
   isFirst = false,
+  onSelectNode,
 }: {
   node: SceneNode;
   depth: number;
   adjustments: Map<string, AdjustmentNode[]>;
   isFirst?: boolean;
+  onSelectNode: (nodeId: string, event: MouseEvent | KeyboardEvent) => void;
 }) {
   const frame = useStudio((state) => state.activeFrame)!;
   const selection = useStudio((state) => state.selection);
@@ -93,6 +101,7 @@ function LayerRow({
         className={`layer-row${selected ? " is-selected" : ""}${node.visible ? "" : " is-hidden"}${dropMode ? ` drop-${dropMode}` : ""}`}
         style={{ paddingInlineStart: 8 + depth * 14 }}
         role="treeitem"
+        data-node-id={node.id}
         aria-level={depth + 1}
         aria-selected={selected}
         aria-expanded={isContainer ? expanded : undefined}
@@ -139,7 +148,7 @@ function LayerRow({
             index,
           });
         }}
-        onClick={(event) => select(node.id, event.shiftKey || event.metaKey)}
+        onClick={(event) => onSelectNode(node.id, event)}
         onContextMenu={(event) => {
           event.preventDefault();
           if (!selected) select(node.id);
@@ -179,7 +188,7 @@ function LayerRow({
           }
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            select(node.id, event.shiftKey);
+            onSelectNode(node.id, event);
           }
           if (event.key === "ArrowRight" && isContainer) setExpanded(true);
           if (event.key === "ArrowLeft" && isContainer) setExpanded(false);
@@ -367,6 +376,7 @@ function LayerRow({
               depth={depth + 1}
               adjustments={adjustments}
               isFirst={false}
+              onSelectNode={onSelectNode}
             />
           ))}
       {[...derived].reverse().map((adjustment) => (
@@ -376,6 +386,7 @@ function LayerRow({
           depth={depth + 1}
           adjustments={adjustments}
           isFirst={false}
+          onSelectNode={onSelectNode}
         />
       ))}
     </>
@@ -384,6 +395,9 @@ function LayerRow({
 
 export function LayersPanel() {
   const frame = useStudio((state) => state.activeFrame);
+  const selection = useStudio((state) => state.selection);
+  const selectMany = useStudio((state) => state.selectMany);
+  const treeRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const adjustments = useMemo(() => {
     const map = new Map<string, AdjustmentNode[]>();
@@ -412,6 +426,35 @@ export function LayersPanel() {
     )
     .reverse();
   const showFilter = frame.root.children.length > 8 || query.length > 0;
+  const selectLayer = (nodeId: string, event: MouseEvent | KeyboardEvent) => {
+    const toggle = event.metaKey || event.ctrlKey;
+    if (event.shiftKey && selection.length > 0) {
+      const ids = [
+        ...(treeRef.current?.querySelectorAll<HTMLElement>(
+          '[role="treeitem"][data-node-id]:not([aria-disabled="true"])',
+        ) ?? []),
+      ].map((item) => item.dataset.nodeId!);
+      const anchor = ids.indexOf(selection.at(-1)!);
+      const target = ids.indexOf(nodeId);
+      if (anchor >= 0 && target >= 0) {
+        const range = ids.slice(
+          Math.min(anchor, target),
+          Math.max(anchor, target) + 1,
+        );
+        selectMany(toggle ? [...selection, ...range] : range);
+        return;
+      }
+    }
+    if (toggle) {
+      selectMany(
+        selection.includes(nodeId)
+          ? selection.filter((id) => id !== nodeId)
+          : [...selection, nodeId],
+      );
+      return;
+    }
+    selectMany([nodeId]);
+  };
   return (
     <section className="panel layers-panel" aria-label="Layers panel">
       <div className="panel-heading">
@@ -433,6 +476,7 @@ export function LayersPanel() {
         Option with left or right to move a layer out of or into a group.
       </p>
       <div
+        ref={treeRef}
         className="layer-tree"
         role="tree"
         aria-label="Frame layers"
@@ -477,6 +521,7 @@ export function LayersPanel() {
               depth={0}
               adjustments={adjustments}
               isFirst={index === 0}
+              onSelectNode={selectLayer}
             />
           ))
         ) : (
@@ -491,6 +536,7 @@ export function LayersPanel() {
               depth={0}
               adjustments={adjustments}
               isFirst={roots.length === 0 && index === 0}
+              onSelectNode={selectLayer}
             />
           ))}
       </div>

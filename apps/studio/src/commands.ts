@@ -1,11 +1,13 @@
 import {
   assertNever,
+  compileArrangeOperations,
   createTransform,
   descendantIds,
   findNode,
   findNodeLocation,
   type FrameOperation,
   type SceneNode,
+  type ArrangeReference,
 } from "@tva-agentic-design/core";
 import { useStudio, type StudioState } from "./store";
 
@@ -27,7 +29,12 @@ export type StudioCommandInvocation =
   | { id: "selection.edit-crop"; nodeId?: string }
   | { id: "selection.add-adjustment" }
   | { id: "selection.nudge"; dx: number; dy: number }
-  | { id: "selection.align"; mode: AlignmentMode }
+  | {
+      id: "selection.align";
+      mode: AlignmentMode;
+      relativeTo?: ArrangeReference;
+      keyNodeId?: string;
+    }
   | { id: "selection.distribute"; axis: "horizontal" | "vertical" }
   | { id: "layer.create-rectangle" }
   | { id: "layer.create-ellipse" }
@@ -214,17 +221,6 @@ const selectedNodes = (state: StudioState) =>
         )
     : [];
 
-const commonParent = (state: StudioState, nodes: SceneNode[]): boolean =>
-  Boolean(
-    state.activeFrame &&
-    nodes.length > 1 &&
-    new Set(
-      nodes.map(
-        (node) => findNodeLocation(state.activeFrame!, node.id)?.parentId,
-      ),
-    ).size === 1,
-  );
-
 export const isStudioCommandEnabled = (
   invocation: StudioCommandInvocation,
   state = useStudio.getState(),
@@ -283,11 +279,22 @@ export const isStudioCommandEnabled = (
         ),
       );
     }
-    case "selection.align":
-      return commonParent(state, selectedNodes(state));
+    case "selection.align": {
+      const nodes = selectedNodes(state);
+      if (invocation.relativeTo === "canvas") return nodes.length >= 1;
+      if (invocation.relativeTo === "key")
+        return (
+          nodes.length >= 2 &&
+          Boolean(
+            invocation.keyNodeId &&
+            state.selection.includes(invocation.keyNodeId),
+          )
+        );
+      return nodes.length >= 2;
+    }
     case "selection.distribute": {
       const nodes = selectedNodes(state);
-      return nodes.length >= 3 && commonParent(state, nodes);
+      return nodes.length >= 3;
     }
     case "layer.create-rectangle":
     case "layer.create-ellipse":
@@ -501,64 +508,40 @@ export const executeStudioCommand = (
       return;
     }
     case "selection.align": {
-      const nodes = selectedNodes(state);
-      if (!commonParent(state, nodes)) return;
-      const left = Math.min(...nodes.map((node) => node.transform.x));
-      const right = Math.max(
-        ...nodes.map((node) => node.transform.x + node.transform.width),
-      );
-      const top = Math.min(...nodes.map((node) => node.transform.y));
-      const bottom = Math.max(
-        ...nodes.map((node) => node.transform.y + node.transform.height),
-      );
+      if (!frame) return;
+      const action =
+        invocation.mode === "left"
+          ? "align-left"
+          : invocation.mode === "center"
+            ? "align-center-x"
+            : invocation.mode === "right"
+              ? "align-right"
+              : invocation.mode === "top"
+                ? "align-top"
+                : invocation.mode === "middle"
+                  ? "align-center-y"
+                  : "align-bottom";
       void state.commit(
-        nodes.map((node) => ({
-          kind: "updateNode" as const,
-          nodeId: node.id,
-          propertyGroup: "transform" as const,
-          value:
-            invocation.mode === "left"
-              ? { x: left }
-              : invocation.mode === "center"
-                ? { x: (left + right - node.transform.width) / 2 }
-                : invocation.mode === "right"
-                  ? { x: right - node.transform.width }
-                  : invocation.mode === "top"
-                    ? { y: top }
-                    : invocation.mode === "middle"
-                      ? { y: (top + bottom - node.transform.height) / 2 }
-                      : { y: bottom - node.transform.height },
-        })),
+        compileArrangeOperations({
+          frame,
+          nodeIds: state.selection,
+          action,
+          relativeTo: invocation.relativeTo,
+          keyNodeId: invocation.keyNodeId,
+        }),
       );
       return;
     }
     case "selection.distribute": {
-      const nodes = selectedNodes(state);
-      if (nodes.length < 3 || !commonParent(state, nodes)) return;
-      const position = invocation.axis === "horizontal" ? "x" : "y";
-      const size = invocation.axis === "horizontal" ? "width" : "height";
-      const ordered = [...nodes].sort(
-        (left, right) => left.transform[position] - right.transform[position],
-      );
-      const start = ordered[0]!.transform[position];
-      const end =
-        ordered.at(-1)!.transform[position] + ordered.at(-1)!.transform[size];
-      const occupied = ordered.reduce(
-        (sum, node) => sum + node.transform[size],
-        0,
-      );
-      const gap = (end - start - occupied) / (ordered.length - 1);
-      let cursor = start;
+      if (!frame) return;
       void state.commit(
-        ordered.map((node) => {
-          const value = { [position]: cursor };
-          cursor += node.transform[size] + gap;
-          return {
-            kind: "updateNode" as const,
-            nodeId: node.id,
-            propertyGroup: "transform" as const,
-            value,
-          };
+        compileArrangeOperations({
+          frame,
+          nodeIds: state.selection,
+          action:
+            invocation.axis === "horizontal"
+              ? "distribute-horizontal"
+              : "distribute-vertical",
         }),
       );
       return;

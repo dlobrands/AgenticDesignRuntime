@@ -17,18 +17,25 @@ copied.
 
 ## Release gate
 
-Publication is a manual private-default-branch action, not a tag-push side
-effect. The dispatch is accepted only from the repository-owner identity and
-must provide the exact current private `main` commit, the exact version in
-`product-metadata.json`, and the confirmation `PUBLISH ADR vX.Y.Z`. The target
-version must not exist in either private or public tag history. Private
-quality, browser, packed-install, checksum, SBOM, provenance, and
-representative-design gates run first. The sanitized snapshot then repeats its
-source gates before GitHub or npm publication. The GitHub Environment records
-the deployment; the explicit owner dispatch is the authorization boundary when
-paid private-environment review protection is unavailable.
+The owner may authorize manual publication from the exact committed private `main`
+source. For the v2.0.0 release, GitHub Actions are not used. Run local quality,
+browser, packed-install, checksum, skill/tool-parity, and sanitized-source checks
+before promotion. Promote only the verified snapshot to public `main`; preserve
+private history and user workspaces outside that snapshot.
 
-GitHub Releases contain the macOS arm64 bundle, component tarballs, plugin,
+Publish the exact package archives with the owner's authenticated npm session.
+After publication, run `pnpm pack:release:published` to hydrate immutable registry
+bytes, repeat packed-install and checksum verification, then attach the verified
+artifacts to the exact public release tag. Verify the installed personal plugin
+against those artifacts. A manual publication does not claim npm OIDC provenance
+or an Actions deployment record. Signing/provenance templates remain inactive.
+
+The checked-in workflows remain manual-only reference paths and must not be
+invoked without separate owner authorization. Windows is an owner-accepted
+release target for v2.0.0; native Windows validation is still pending and must be
+reported separately from successful macOS checks.
+
+GitHub Releases contain the macOS arm64 and Windows x64 bundles, component tarballs, plugin,
 installer, checksums, release manifest, SBOM, and provenance. npm publishes the
 exact-version public package family with provenance. Studio remains a private
 workspace package bundled inside `@tva-agentic-design/runtime`.

@@ -72,7 +72,10 @@ describe("agent runtime archive integrity", () => {
       JSON.stringify({ version: "0.0.1" }),
     );
     const executable = path.join(installPath, "bin", "design-runtime");
-    await writeFile(executable, "#!/bin/sh\necho '1.1.0'\n");
+    await writeFile(
+      executable,
+      "#!/usr/bin/env node\nprocess.stdout.write('1.1.0\\n');\n",
+    );
     await chmod(executable, 0o700);
     const updateManifest = {
       schemaVersion: 1,
@@ -132,7 +135,7 @@ describe("agent runtime archive integrity", () => {
           installPath,
           sequence: 1,
           entrypoint: "bin/design-runtime",
-          invocation: "executable",
+          invocation: "node",
           manifestHash: await sha256(stableStringify(updateManifest)),
         },
       }),

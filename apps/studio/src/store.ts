@@ -16,6 +16,8 @@ import type {
   AssetManifest,
   BrandKitRecord,
   BrandLintReport,
+  DesignBrief,
+  DesignPlan,
   DesignPlanCompilation,
   DesignRoleInspectionReport,
   FontManifest,
@@ -134,6 +136,7 @@ export type StudioState = {
     roleId: string;
     nodeId: string | null;
   };
+  intentCorrection?: { kind: "brief" | "plan"; id: string };
   validation?: FrameValidationReport;
   visualQa?: VisualQaReport;
   brandLint?: BrandLintReport;
@@ -165,6 +168,8 @@ export type StudioState = {
     nodeId: string | null,
     copyItemId?: string | null,
   ) => Promise<void>;
+  previewDesignBriefCorrection: (brief: DesignBrief) => Promise<void>;
+  previewDesignPlanCorrection: (plan: DesignPlan) => Promise<void>;
   createProject: (name: string) => Promise<void>;
   renameProject: (name: string) => Promise<void>;
   trashProject: () => Promise<void>;
@@ -218,7 +223,10 @@ export type StudioState = {
   applyProjectTemplate: (templateId: string) => Promise<void>;
   detachProjectTemplate: (instanceId: string) => Promise<void>;
   detachBrandComponent: (instanceId: string) => Promise<void>;
-  importFile: (kind: "asset" | "font", file: File) => Promise<void>;
+  importFile: (
+    kind: "asset" | "font" | "color-profile",
+    file: File,
+  ) => Promise<void>;
   createBrandKit: (
     name: string,
     provenance: string,
@@ -309,6 +317,7 @@ const importedLayer = (
   filename: string,
   editableVector?: {
     commands: VectorPathCommand[];
+    fillRule?: "nonzero" | "evenodd";
     fill?: ShapeFill;
     stroke?: Stroke;
   },
@@ -348,6 +357,7 @@ const importedLayer = (
       ...common,
       type: "vectorPath",
       commands: structuredClone(editableVector.commands),
+      ...(editableVector.fillRule ? { fillRule: editableVector.fillRule } : {}),
       ...(editableVector.fill
         ? { fill: structuredClone(editableVector.fill) }
         : {}),
@@ -756,6 +766,7 @@ export const createStudioStore = (
           state.proposalView = undefined;
           state.designPlanCompilation = undefined;
           state.semanticRoleAssignment = undefined;
+          state.intentCorrection = undefined;
           state.brandMigrationTarget = undefined;
           state.saveState = "saved";
         }),
@@ -788,6 +799,7 @@ export const createStudioStore = (
           state.preview = undefined;
           state.designPlanCompilation = undefined;
           state.semanticRoleAssignment = undefined;
+          state.intentCorrection = undefined;
         });
         try {
           const result = await get().client.previewDesignPlan({
@@ -1000,6 +1012,22 @@ export const createStudioStore = (
             planId,
             variantRuleId,
             baseRevision: frame.revision,
+            projectBaseRevision: project.revision,
+            newFrameId: crypto.randomUUID(),
+            slug: slugify(
+              `${frame.name}-${
+                project.designPlans
+                  ?.find((plan) => plan.id === planId)
+                  ?.variantRules.find((rule) => rule.id === variantRuleId)
+                  ?.name ?? "variant"
+              }`,
+            ),
+            name: `${frame.name} · ${
+              project.designPlans
+                ?.find((plan) => plan.id === planId)
+                ?.variantRules.find((rule) => rule.id === variantRuleId)
+                ?.name ?? "Variant"
+            }`,
             actor: { source: "studio", id: "studio-design-variant" },
           });
           set((state) => {
@@ -1072,6 +1100,78 @@ export const createStudioStore = (
             state.saveState = review.saveState;
             state.designRoleInspection = result.inspection;
             state.semanticRoleAssignment = { planId, roleId, nodeId };
+          });
+        } catch (error) {
+          set((state) => {
+            state.saveState = "error";
+            state.error =
+              error instanceof Error ? error.message : String(error);
+          });
+        }
+      },
+
+      previewDesignBriefCorrection: async (brief) => {
+        const project = get().activeProject;
+        if (!project) return;
+        set((state) => {
+          state.saveState = "saving";
+          state.error = undefined;
+          state.preview = undefined;
+          state.intentCorrection = undefined;
+        });
+        try {
+          const result = await get().client.setDesignBrief({
+            projectId: project.id,
+            brief,
+            baseRevision: project.revision,
+            mode: "preview",
+            actor: { source: "studio", id: "studio-brief-correction" },
+          });
+          if (!("previewId" in result))
+            throw new Error("Brief correction did not return a preview.");
+          const review = openProposalReview(result);
+          set((state) => {
+            state.preview = review.preview;
+            state.saveState = review.saveState;
+            state.intentCorrection = { kind: "brief", id: brief.id };
+          });
+        } catch (error) {
+          set((state) => {
+            state.saveState = "error";
+            state.error =
+              error instanceof Error ? error.message : String(error);
+          });
+        }
+      },
+
+      previewDesignPlanCorrection: async (plan) => {
+        const project = get().activeProject;
+        if (!project) return;
+        set((state) => {
+          state.saveState = "saving";
+          state.error = undefined;
+          state.preview = undefined;
+          state.intentCorrection = undefined;
+        });
+        try {
+          const result = await get().client.setDesignPlan({
+            projectId: project.id,
+            plan: {
+              ...plan,
+              approval: { state: "draft", notes: [] },
+              updatedAt: new Date().toISOString(),
+            },
+            baseRevision: project.revision,
+            mode: "preview",
+            actor: { source: "studio", id: "studio-plan-correction" },
+          });
+          if (!("previewId" in result))
+            throw new Error("Plan correction did not return a preview.");
+          const review = openProposalReview(result);
+          set((state) => {
+            state.preview = review.preview;
+            state.saveState = review.saveState;
+            state.intentCorrection = { kind: "plan", id: plan.id };
           });
         } catch (error) {
           set((state) => {
@@ -1297,10 +1397,13 @@ export const createStudioStore = (
           if (result.kind === "asset") importedAsset = result.asset;
           const requestedFrameId = get().activeFrame?.id;
           await get().loadProject(project.id, requestedFrameId);
-          if (result.kind === "font") {
+          if (result.kind !== "asset") {
             set((state) => {
               state.saveState = "saved";
-              state.warning = `${file.name} imported.`;
+              state.warning =
+                result.kind === "font"
+                  ? `${file.name} imported.`
+                  : `${file.name} imported as a verified CMYK output profile.`;
             });
             return;
           }

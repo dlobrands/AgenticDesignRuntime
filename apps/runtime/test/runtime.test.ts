@@ -987,7 +987,11 @@ describe("workspace and path security", () => {
     await expect(
       resolveInside(root, path.join(outside, "secret.txt")),
     ).rejects.toMatchObject({ code: "PATH_TRAVERSAL_REJECTED" });
-    await symlink(outside, path.join(root, "escape"));
+    await symlink(
+      outside,
+      path.join(root, "escape"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
     await expect(
       resolveInside(root, "escape/secret.txt"),
     ).rejects.toMatchObject({ code: "PATH_OUTSIDE_WORKSPACE" });

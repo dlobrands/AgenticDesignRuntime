@@ -1,0 +1,38 @@
+name: platform-validation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install chromium
+      - run: pnpm verify
+      - run: pnpm test:e2e
+      - run: pnpm pack:release
+      - run: pnpm verify:packed
+      - run: node scripts/verify-checksums.mjs release
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: platform-evidence-${{ matrix.os }}
+          path: |
+            playwright-report/
+            test-results/
+            release/release-manifest.json
+            release/SHA256SUMS

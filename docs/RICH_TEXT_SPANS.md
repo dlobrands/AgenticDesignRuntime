@@ -1,6 +1,6 @@
 # Rich Text Span Contract
 
-AgenticDesignRuntime V1 keeps `TextNode.text` as the canonical plain-content field and adds optional `TextNode.spans` for bounded inline styling. Plain text remains the simplest agent and human authoring path. Rich text does not introduce a second document model, mutation authority, renderer, or history stream.
+AgenticDesignRuntime V2 keeps `TextNode.text` as the canonical plain-content field and retains optional `TextNode.spans` for bounded inline styling. Plain text remains the simplest agent and human authoring path. Rich text does not introduce a second document model, mutation authority, renderer, or history stream.
 
 ## Canonical shape
 
@@ -10,11 +10,11 @@ Each span contains:
 - UTF-16 `start` and `end` offsets into `TextNode.text`;
 - optional font ID, size, weight, style, color, opacity, tracking, baseline shift, and decoration overrides.
 
-When `spans` exists, one to 256 ordered spans must cover the complete non-empty text without gaps or overlap. Ranges cannot split a UTF-16 surrogate pair. Paragraph alignment, vertical alignment, line height, and fallback values remain in `TextNode.typography`.
+When `spans` exists, one to 256 ordered spans must cover the complete non-empty text without gaps or overlap. Ranges cannot split a UTF-16 surrogate pair or grapheme cluster. Paragraph alignment, vertical alignment, line height, language, LTR/RTL direction intent, and fallback values remain in `TextNode.typography`.
 
-## V1 compatibility and migration
+## V2 compatibility and migration
 
-Existing schema-1 files need no destructive migration. A legacy text node without `spans` deterministically projects to one effective empty-style span over the complete text. The projection ID is derived from the node ID and range and is stable across repeated reads. It is persisted only when a range receives rich formatting.
+Schema-1 workspaces require the explicit backup-producing workspace migration before Runtime 2 edits them. A legacy text node without `spans` deterministically projects to one effective empty-style span over the complete text. The projection ID is derived from the node ID and range and is stable across repeated reads. It is persisted only when a range receives rich formatting.
 
 This is an additive schema-1 evolution:
 
@@ -42,7 +42,7 @@ Plain textarea edits on a rich node preserve spans through deterministic reconci
 
 The Pixi renderer resolves spans against paragraph defaults, lays out bounded word/character wrapping, applies alignment and vertical alignment, renders baseline shifts and decorations, and clips through the existing text-box contract. The same layout supplies auto-size and overflow measurement. Studio preview, render preview, and canonical PNG export use the same renderer and font registry.
 
-The current bounded model intentionally excludes per-run line height, arbitrary HTML/CSS, executable content, bidirectional override controls, and OpenType feature toggles. Those require separate compatibility and deterministic-layout decisions.
+Character wrapping uses grapheme segmentation. Explicit or auto-detected RTL paragraphs preserve logical canonical text while the pinned Chromium shaping path handles glyph formation; rich fragments are positioned in RTL visual order. Arbitrary HTML/CSS, executable content, manual bidirectional override controls, and unrestricted OpenType feature toggles remain excluded.
 
 ## Evidence
 

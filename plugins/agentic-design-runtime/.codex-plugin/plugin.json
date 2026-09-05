@@ -1,26 +1,36 @@
 {
   "name": "agentic-design-runtime",
-  "version": "0.0.1",
+  "version": "2.0.0",
   "description": "Create and revise deliberate, deterministic, editable layered graphics through the local Agentic Design Runtime.",
   "author": {
     "name": "David Logan"
   },
   "license": "Proprietary",
+  "repository": "https://github.com/dlobrands/AgenticDesignRuntime",
   "keywords": ["design", "graphics", "agentic", "pixi", "mcp"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Agentic Design Runtime",
     "shortDescription": "Build editable graphics with local agents",
-    "longDescription": "Agentic Design Runtime gives Codex a complete local visual-design workflow and installed design-intelligence curriculum: translate briefs into hierarchy and structure, build through typed transactions, render and critique previews, collaborate in Studio, and export approved PNG, JPEG, or WebP files.",
+    "longDescription": "Agentic Design Runtime gives Codex four focused local workflows for editable graphics, read-only design review, exact-version Brand systems, and runtime operations. Build through typed transactions, collaborate in Studio, and export approved raster, SVG, or ICC-managed CMYK PDF files.",
     "developerName": "David Logan",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "defaultPrompt": [
       "Create an editable campaign graphic and show me the preview.",
-      "Revise my existing layered graphic and preserve its history.",
-      "Open Studio so I can adjust this design with you."
+      "Review my layered graphic without changing it.",
+      "Inspect this project's exact Brand Kit pin."
     ],
-    "brandColor": "#315CF5"
+    "brandColor": "#315CF5",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "logoDark": "./assets/logo-dark.png",
+    "websiteURL": "https://github.com/dlobrands/AgenticDesignRuntime",
+    "screenshots": [
+      "./assets/studio-template.png",
+      "./assets/studio-export.png",
+      "./assets/studio-effects.png"
+    ]
   },
   "mcpServers": "./.mcp.json"
 }

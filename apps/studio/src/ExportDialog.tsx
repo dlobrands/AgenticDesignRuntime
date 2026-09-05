@@ -17,6 +17,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const exportFrames = useStudio((state) => state.exportFrames);
   const saveExportPreset = useStudio((state) => state.saveExportPreset);
   const removeExportPreset = useStudio((state) => state.removeExportPreset);
+  const importFile = useStudio((state) => state.importFile);
   const [selectedFrameIds, setSelectedFrameIds] = useState<string[]>(
     activeFrame ? [activeFrame.id] : [],
   );
@@ -24,6 +25,13 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const [scale, setScale] = useState(1);
   const [quality, setQuality] = useState(90);
   const [matteColor, setMatteColor] = useState("#FFFFFF");
+  const [svgMode, setSvgMode] = useState<"vectorOnly" | "hybrid">("vectorOnly");
+  const [dpi, setDpi] = useState(300);
+  const [outputIccProfileId, setOutputIccProfileId] = useState(
+    project.colorProfiles?.[0]?.id ?? "",
+  );
+  const [bleedMm, setBleedMm] = useState(0);
+  const [cropMarks, setCropMarks] = useState(false);
   const [presetId, setPresetId] = useState("");
   const [presetName, setPresetName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -33,7 +41,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     [frames, selectedFrameIds],
   );
   const alphaEligibleCount =
-    format === "png" || format === "webp"
+    format === "png" || format === "webp" || format === "svg"
       ? selectedFrames.filter(
           (frame) => frame.canvas.background.type === "transparent",
         ).length
@@ -45,8 +53,12 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const settings = (): ExportSettings => ({
     format,
     scale,
-    ...(format === "png" ? {} : { quality }),
+    ...(format === "jpeg" || format === "webp" ? { quality } : {}),
     ...(format === "jpeg" ? { matteColor } : {}),
+    ...(format === "svg" ? { svgMode } : {}),
+    ...(format === "pdf"
+      ? { dpi, outputIccProfileId, bleedMm, cropMarks }
+      : {}),
   });
   const applyPreset = (id: string) => {
     setPresetId(id);
@@ -58,6 +70,13 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     setScale(preset.scale);
     setQuality(preset.quality ?? 90);
     setMatteColor(preset.matteColor ?? "#FFFFFF");
+    setSvgMode(preset.svgMode ?? "vectorOnly");
+    setDpi(preset.dpi ?? 300);
+    setOutputIccProfileId(
+      preset.outputIccProfileId ?? project.colorProfiles?.[0]?.id ?? "",
+    );
+    setBleedMm(preset.bleedMm ?? 0);
+    setCropMarks(preset.cropMarks ?? false);
     setPresetName(preset.name);
   };
   const toggleFrame = (frameId: string) =>
@@ -161,22 +180,26 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             <option value="png">PNG</option>
             <option value="jpeg">JPEG</option>
             <option value="webp">WebP</option>
+            <option value="svg">SVG</option>
+            <option value="pdf">CMYK PDF</option>
           </select>
         </label>
-        <label>
-          Scale
-          <select
-            value={scale}
-            onChange={(event) => setScale(Number(event.currentTarget.value))}
-          >
-            {SCALE_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}×
-              </option>
-            ))}
-          </select>
-        </label>
-        {format !== "png" && (
+        {format !== "pdf" ? (
+          <label>
+            Scale
+            <select
+              value={scale}
+              onChange={(event) => setScale(Number(event.currentTarget.value))}
+            >
+              {SCALE_OPTIONS.map((value) => (
+                <option key={value} value={value}>
+                  {value}×
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {(format === "jpeg" || format === "webp") && (
           <label>
             Quality
             <input
@@ -200,6 +223,90 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             />
           </label>
         )}
+        {format === "svg" ? (
+          <label>
+            SVG mode
+            <select
+              value={svgMode}
+              onChange={(event) =>
+                setSvgMode(event.currentTarget.value as "vectorOnly" | "hybrid")
+              }
+            >
+              <option value="vectorOnly">Vector only</option>
+              <option value="hybrid">Hybrid raster fallback</option>
+            </select>
+          </label>
+        ) : null}
+        {format === "pdf" ? (
+          <>
+            <label>
+              Output ICC profile
+              <select
+                value={outputIccProfileId}
+                onChange={(event) =>
+                  setOutputIccProfileId(event.currentTarget.value)
+                }
+              >
+                <option value="">Choose a verified CMYK profile</option>
+                {(project.colorProfiles ?? []).map((profile) => (
+                  <option value={profile.id} key={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Import CMYK ICC
+              <input
+                type="file"
+                accept=".icc,.icm,application/vnd.iccprofile"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file)
+                    void importFile("color-profile", file).then(() =>
+                      setOutputIccProfileId(
+                        useStudio
+                          .getState()
+                          .activeProject?.colorProfiles?.at(-1)?.id ?? "",
+                      ),
+                    );
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+            <label>
+              DPI
+              <input
+                type="number"
+                min="72"
+                max="600"
+                value={dpi}
+                onChange={(event) => setDpi(Number(event.currentTarget.value))}
+              />
+            </label>
+            <label>
+              Bleed (mm)
+              <input
+                type="number"
+                min="0"
+                max="25"
+                step="0.5"
+                value={bleedMm}
+                onChange={(event) =>
+                  setBleedMm(Number(event.currentTarget.value))
+                }
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={cropMarks}
+                onChange={(event) => setCropMarks(event.currentTarget.checked)}
+              />
+              Crop marks
+            </label>
+          </>
+        ) : null}
       </div>
       <div
         className={`export-alpha-status${alphaEligible ? " is-eligible" : ""}`}
@@ -218,7 +325,9 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
               ? `${alphaEligibleCount} of ${selectedFrames.length} selected frames retain alpha; opaque canvases remain opaque.`
               : format === "jpeg"
                 ? `Transparent canvas pixels are flattened to ${matteColor}.`
-                : "Alpha requires transparent canvases across every selected frame."}
+                : format === "pdf"
+                  ? "CMYK PDF is flattened against white through the selected ICC profile."
+                  : "Alpha requires transparent canvases across every selected frame."}
         </span>
       </div>
 
@@ -267,7 +376,16 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         <button
           className="primary-button"
           type="button"
-          disabled={busy || selectedFrameIds.length === 0}
+          disabled={
+            busy ||
+            selectedFrameIds.length === 0 ||
+            (format === "pdf" && !outputIccProfileId)
+          }
+          aria-disabled={
+            busy ||
+            selectedFrameIds.length === 0 ||
+            (format === "pdf" && !outputIccProfileId)
+          }
           onClick={() => void run()}
         >
           {busy

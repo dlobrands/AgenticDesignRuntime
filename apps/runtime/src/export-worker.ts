@@ -12,6 +12,13 @@ import {
   type TextNode,
 } from "@tva-agentic-design/core";
 import { writeFileAtomic } from "./fs-safe.js";
+import { resolveRegisteredFile } from "./workspace.js";
+import { createCmykPdf } from "./cmyk-pdf.js";
+import {
+  exportHybridSvg,
+  exportVectorSvg,
+  hybridRasterBoundary,
+} from "./svg-export.js";
 import type { ProjectState, WorkspaceState } from "./types.js";
 import { PRODUCT_VERSION, REFERENCE_VERSIONS } from "./version.js";
 
@@ -34,11 +41,23 @@ export type RenderResult = {
 export type ExportResult = Omit<RenderResult, "bytes"> & {
   path: string;
   format: ExportSettings["format"];
-  mimeType: "image/png" | "image/jpeg" | "image/webp";
+  mimeType:
+    | "image/png"
+    | "image/jpeg"
+    | "image/webp"
+    | "image/svg+xml"
+    | "application/pdf";
   scale: number;
   quality?: number;
   transparent: boolean;
   sizeBytes: number;
+  rasterizedNodeIds?: string[];
+  fullyRasterized?: boolean;
+  dpi?: number;
+  outputIccProfileId?: string;
+  outputIccProfileHash?: string;
+  bleedMm?: number;
+  cropMarks?: boolean;
 };
 
 type WorkerRenderResponse = {
@@ -67,7 +86,27 @@ export const exportRelativePath = (
     settings.format === "jpeg"
       ? `-m${(settings.matteColor ?? "#FFFFFF").slice(1).toLowerCase()}`
       : "";
-  return `exports/${frame.slug}-r${frame.revision}${scaleSuffix}${qualitySuffix}${matteSuffix}.${extension}`;
+  const svgSuffix =
+    settings.format === "svg" ? `-${settings.svgMode ?? "vectorOnly"}` : "";
+  const pdfSuffix =
+    settings.format === "pdf" ? `-${settings.dpi ?? 300}dpi-cmyk` : "";
+  return `exports/${frame.slug}-r${frame.revision}${scaleSuffix}${qualitySuffix}${matteSuffix}${svgSuffix}${pdfSuffix}.${extension}`;
+};
+
+const frameWithBleed = (
+  frame: FrameDocument,
+  bleedMm: number,
+): FrameDocument => {
+  if (bleedMm <= 0) return structuredClone(frame);
+  const bleedPixels = Math.round((bleedMm / 25.4) * 96);
+  const expanded = structuredClone(frame);
+  expanded.canvas.width += bleedPixels * 2;
+  expanded.canvas.height += bleedPixels * 2;
+  expanded.root.children.forEach((node) => {
+    node.transform.x += bleedPixels;
+    node.transform.y += bleedPixels;
+  });
+  return expanded;
 };
 
 export class ChromiumExportWorker {
@@ -88,6 +127,13 @@ export class ChromiumExportWorker {
   ): ExportSettings {
     const settings = normalizeExportSettings(input);
     const dimensions = exportDimensions(frame, settings);
+    if (settings.format === "pdf" && (settings.bleedMm ?? 0) > 0) {
+      const bleedPixels = Math.round(
+        ((settings.bleedMm ?? 0) / 25.4) * (settings.dpi ?? 300),
+      );
+      dimensions.width += bleedPixels * 2;
+      dimensions.height += bleedPixels * 2;
+    }
     const maximumDimension = Math.min(
       this.workspace.capabilities.maxCanvasDimension,
       this.workspace.capabilities.maxTextureSize,
@@ -103,6 +149,46 @@ export class ChromiumExportWorker {
         { dimensions, maximumDimension, scale: settings.scale },
         409,
       );
+    return settings;
+  }
+
+  async preflightExport(
+    project: ProjectState,
+    frame: FrameDocument,
+    input?: Partial<ExportSettings>,
+  ): Promise<ExportSettings> {
+    const settings = this.assertExportSupported(frame, input);
+    if (settings.format === "svg" && settings.svgMode !== "hybrid") {
+      try {
+        exportVectorSvg(frame, project.fonts.fonts);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new RuntimeError(
+          "EXPORT_BLOCKED",
+          "Vector-only SVG cannot faithfully express every visible node.",
+          {
+            nodeIds: message
+              .replace(/^SVG_VECTOR_ONLY_UNSUPPORTED:\s*/, "")
+              .split(/,\s*/)
+              .filter(Boolean),
+          },
+          409,
+        );
+      }
+    }
+    if (settings.format === "pdf") {
+      const profile = project.document.colorProfiles?.find(
+        (candidate) => candidate.id === settings.outputIccProfileId,
+      );
+      if (!profile)
+        throw new RuntimeError(
+          "EXPORT_BLOCKED",
+          "The requested CMYK ICC profile is not registered in this project.",
+          { outputIccProfileId: settings.outputIccProfileId },
+          409,
+        );
+      await resolveRegisteredFile(project, profile, "color-profile");
+    }
     return settings;
   }
 
@@ -315,9 +401,15 @@ export class ChromiumExportWorker {
     input?: Partial<ExportSettings>,
   ): Promise<ExportResult> {
     const started = performance.now();
-    const settings = this.assertExportSupported(frame, input);
+    const settings = await this.preflightExport(project, frame, input);
     const dimensions = exportDimensions(frame, settings);
-    const result = await this.render(project, frame, settings.scale);
+    const renderFrame =
+      settings.format === "pdf"
+        ? frameWithBleed(frame, settings.bleedMm ?? 0)
+        : frame;
+    const renderScale =
+      settings.format === "pdf" ? (settings.dpi ?? 300) / 96 : settings.scale;
+    const result = await this.render(project, renderFrame, renderScale);
     const blockingOverflow = result.warnings.find(
       (warning) => warning.code === "TEXT_OVERFLOW",
     );
@@ -328,6 +420,136 @@ export class ChromiumExportWorker {
         { nodeIds: blockingOverflow.nodeIds },
         409,
       );
+    const relativePath = exportRelativePath(frame, settings);
+
+    if (settings.format === "svg") {
+      let document;
+      try {
+        if (settings.svgMode === "hybrid") {
+          const boundary = hybridRasterBoundary(frame);
+          if (boundary < 0)
+            document = exportVectorSvg(frame, project.fonts.fonts);
+          else {
+            let fallback = result;
+            if (boundary < frame.root.children.length - 1) {
+              const fallbackFrame = structuredClone(frame);
+              fallbackFrame.root.children = fallbackFrame.root.children.slice(
+                0,
+                boundary + 1,
+              );
+              fallback = await this.render(
+                project,
+                fallbackFrame,
+                settings.scale,
+              );
+            }
+            document = exportHybridSvg(
+              frame,
+              `data:image/png;base64,${fallback.bytes.toString("base64")}`,
+              boundary,
+            );
+          }
+        } else document = exportVectorSvg(frame, project.fonts.fonts);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const unsupported = message
+          .replace(/^SVG_VECTOR_ONLY_UNSUPPORTED:\s*/, "")
+          .split(/,\s*/)
+          .filter(Boolean);
+        throw new RuntimeError(
+          "EXPORT_BLOCKED",
+          "Vector-only SVG cannot faithfully express every visible node. Use hybrid mode or revise the reported nodes.",
+          { nodeIds: unsupported },
+          409,
+        );
+      }
+      const bytes = Buffer.from(document.source, "utf8");
+      await writeFileAtomic(path.join(project.directory, relativePath), bytes, {
+        mode: 0o600,
+      });
+      return {
+        path: relativePath,
+        width: frame.canvas.width,
+        height: frame.canvas.height,
+        revision: frame.revision,
+        sceneHash: await semanticFrameHash(frame),
+        durationMs: performance.now() - started,
+        warnings: result.warnings,
+        resourceStats: result.resourceStats,
+        versions: result.versions,
+        format: settings.format,
+        mimeType: "image/svg+xml",
+        scale: settings.scale,
+        transparent: exportSupportsTransparency(frame, settings),
+        sizeBytes: bytes.byteLength,
+        rasterizedNodeIds: document.rasterizedNodeIds,
+        fullyRasterized: document.fullyRasterized,
+      };
+    }
+
+    if (settings.format === "pdf") {
+      const profile = project.document.colorProfiles?.find(
+        (candidate) => candidate.id === settings.outputIccProfileId,
+      );
+      if (!profile)
+        throw new RuntimeError(
+          "EXPORT_BLOCKED",
+          "The requested CMYK ICC profile is not registered in this project.",
+          { outputIccProfileId: settings.outputIccProfileId },
+          409,
+        );
+      const iccProfilePath = await resolveRegisteredFile(
+        project,
+        profile,
+        "color-profile",
+      );
+      let pdf;
+      try {
+        pdf = await createCmykPdf({
+          png: result.bytes,
+          iccProfilePath,
+          trimWidthPixels: frame.canvas.width,
+          trimHeightPixels: frame.canvas.height,
+          dpi: settings.dpi ?? 300,
+          bleedMm: settings.bleedMm ?? 0,
+          cropMarks: settings.cropMarks ?? false,
+          title: frame.name,
+        });
+      } catch (error) {
+        throw new RuntimeError(
+          "EXPORT_FAILED",
+          `CMYK PDF encoding failed: ${error instanceof Error ? error.message : String(error)}`,
+          undefined,
+          500,
+        );
+      }
+      const bytes = Buffer.from(pdf.bytes);
+      await writeFileAtomic(path.join(project.directory, relativePath), bytes, {
+        mode: 0o600,
+      });
+      return {
+        path: relativePath,
+        width: result.width,
+        height: result.height,
+        revision: frame.revision,
+        sceneHash: await semanticFrameHash(frame),
+        durationMs: performance.now() - started,
+        warnings: result.warnings,
+        resourceStats: result.resourceStats,
+        versions: result.versions,
+        format: settings.format,
+        mimeType: "application/pdf",
+        scale: renderScale,
+        transparent: false,
+        sizeBytes: bytes.byteLength,
+        dpi: settings.dpi,
+        outputIccProfileId: profile.id,
+        outputIccProfileHash: profile.hash,
+        bleedMm: settings.bleedMm,
+        cropMarks: settings.cropMarks,
+      };
+    }
+
     let bytes = result.bytes;
     if (settings.format !== "png") {
       let pipeline = sharp(result.bytes);
@@ -337,7 +559,6 @@ export class ChromiumExportWorker {
           .jpeg({ quality: settings.quality });
       else if (settings.format === "webp")
         pipeline = pipeline.webp({ quality: settings.quality });
-      else pipeline = pipeline.png();
       bytes = await pipeline.toBuffer();
     }
     const metadata = await sharp(bytes).metadata();
@@ -370,7 +591,6 @@ export class ChromiumExportWorker {
         },
         500,
       );
-    const relativePath = exportRelativePath(frame, settings);
     await writeFileAtomic(path.join(project.directory, relativePath), bytes, {
       mode: 0o600,
     });

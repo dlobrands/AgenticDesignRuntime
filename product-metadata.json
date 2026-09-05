@@ -1,15 +1,27 @@
 {
   "schemaVersion": 1,
-  "productVersion": "1.0.2",
-  "pluginVersion": "0.0.1",
-  "designIntelligenceVersion": "1.0.0",
-  "runtimeApiVersion": 1,
-  "workspaceSchemaVersion": 1,
+  "productVersion": "2.0.0",
+  "pluginVersion": "2.0.0",
+  "designIntelligenceVersion": "2.0.0",
+  "runtimeApiVersion": 2,
+  "workspaceSchemaVersion": 2,
   "referenceVersions": {
     "node": "24.18.0",
     "pnpm": "10.34.5",
     "pixi": "8.19.0",
     "playwright": "1.61.1",
     "fastify": "5.10.0"
-  }
+  },
+  "supportedTargets": [
+    {
+      "platform": "darwin",
+      "architecture": "arm64",
+      "minimumRelease": "23.0.0"
+    },
+    {
+      "platform": "win32",
+      "architecture": "x64",
+      "minimumRelease": "10.0.22000"
+    }
+  ]
 }

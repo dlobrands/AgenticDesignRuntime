@@ -154,10 +154,22 @@ const propertyOperations = (
     "blendMode" in current &&
     "blendMode" in proposed
   ) {
-    const value: { opacity?: number; blendMode?: string } = {};
+    const value: {
+      opacity?: number;
+      fillOpacity?: number;
+      blendMode?: string;
+    } = {};
     if (current.opacity !== proposed.opacity) value.opacity = proposed.opacity;
     if (current.blendMode !== proposed.blendMode)
       value.blendMode = proposed.blendMode;
+    if (
+      current.type !== "group" &&
+      proposed.type !== "group" &&
+      "fillOpacity" in current &&
+      "fillOpacity" in proposed &&
+      (current.fillOpacity ?? 1) !== (proposed.fillOpacity ?? 1)
+    )
+      value.fillOpacity = proposed.fillOpacity ?? 1;
     if (Object.keys(value).length)
       result.push({
         kind: "updateNode",

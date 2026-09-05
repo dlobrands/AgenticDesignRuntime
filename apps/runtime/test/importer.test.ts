@@ -198,10 +198,21 @@ describe("asset import boundaries", () => {
     expect(duplicate.editableVector?.commands).toHaveLength(4);
   });
 
-  it("keeps unsupported safe SVGs as normal assets instead of lossy conversion", async () => {
+  it("imports quadratic SVG paths and preserves still-unsupported safe SVGs", async () => {
     const { workspace, project } = await state();
+    const quadratic = await importAssetBuffer({
+      workspace,
+      project,
+      buffer: Buffer.from(
+        '<svg width="100" height="100"><path d="M0 0 Q 50 100 100 0" fill="#000000"/></svg>',
+      ),
+      declaredMime: "image/svg+xml",
+    });
+    expect(quadratic.editableVector?.commands[1]).toMatchObject({
+      kind: "quadratic",
+      control: { x: 0.5, y: 1 },
+    });
     for (const source of [
-      '<svg width="100" height="100"><path d="M0 0 Q 50 100 100 0" fill="#000000"/></svg>',
       '<svg width="100" height="100"><g transform="translate(1 1)"><path d="M0 0 L100 0 L100 100 Z"/></g></svg>',
       '<svg width="100" height="100"><path d="M0 0 L100 0 L100 100 Z" fill="red"/></svg>',
     ]) {

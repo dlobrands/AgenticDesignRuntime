@@ -1,6 +1,6 @@
 # Installed Design Intelligence
 
-Agentic Design Runtime bundles a versioned design-intelligence curriculum inside the existing `$agentic-design` skill. Every Codex agent that invokes ADR receives the same core design doctrine and can progressively load task-specific guidance without installing a competing skill or maintaining a second design state model.
+Agentic Design Runtime bundles one versioned design-intelligence curriculum under `$agentic-design` and three focused companion workflows: `$agentic-design-review`, `$agentic-brand-system`, and `$agentic-design-ops`. The skills share one MCP server and one canonical runtime; they separate triggers and success criteria without duplicating design state or curriculum.
 
 ## Purpose and boundary
 
@@ -8,7 +8,7 @@ The curriculum targets dependable junior-level judgment for static branded graph
 
 Installation supplies task-time instructions. It does not retrain model weights, create automatic durable taste, or authorize external publication. Project-specific Brand Kits, approved examples, human feedback, and repeated rendered comparison remain essential.
 
-ADR produces canonical PNG, JPEG, and WebP exports. The curriculum does not claim that ADR certifies PDF/X, CMYK, spot colors, overprint, printer profiles, responsive interface behavior, or other unsupported production conditions.
+ADR produces canonical PNG, JPEG, WebP, bounded SVG, and generic ICC-managed process-CMYK PDF exports. The curriculum does not claim PDF/X, spot colors, overprint, separations, printer-specific proofing, responsive interface behavior, or other unsupported production conditions.
 
 ## One canonical workflow
 
@@ -44,7 +44,7 @@ The skill entrypoint carries only the doctrine that must affect every substantia
 - contrastive examples and deliberate training;
 - research provenance for maintainers.
 
-The machine-readable `plugins/agentic-design-runtime/design-intelligence-manifest.json` declares the curriculum version, entrypoint, scope, and every routed module. `scripts/validate-plugin.mjs` verifies that the product metadata, manifest, skill links, and module files agree.
+The machine-readable `plugins/agentic-design-runtime/design-intelligence-manifest.json`, `tool-surface.json`, and `plugin-evals.json` declare curriculum, tool, and routing contracts. `scripts/validate-plugin.mjs` verifies all four skills, references, source/packed tool parity, and module files.
 
 ## Candidate exploration
 

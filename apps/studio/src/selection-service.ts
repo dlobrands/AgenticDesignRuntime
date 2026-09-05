@@ -28,3 +28,17 @@ export const retainExistingSelection = (
   frame?: FrameDocument,
 ): string[] =>
   frame ? selection.filter((nodeId) => Boolean(findNode(frame, nodeId))) : [];
+
+export const resolveCanvasTarget = (input: {
+  hitCandidates: readonly string[];
+  selection: readonly string[];
+  selectedBoundsFallback?: string;
+  cycle?: boolean;
+}): string | undefined => {
+  if (input.hitCandidates.length === 0) return input.selectedBoundsFallback;
+  if (!input.cycle) return input.hitCandidates[0];
+  const currentIndex = input.hitCandidates.findIndex((id) =>
+    input.selection.includes(id),
+  );
+  return input.hitCandidates[(currentIndex + 1) % input.hitCandidates.length];
+};

@@ -15,13 +15,13 @@ Reflow and resize use the current exact frame dimensions and existing layout reg
 
 ## Format safety
 
-When a rule declares different canvas dimensions, the compiler returns a visible warning and no operations or preview. It never applies hide/reflow/resize partially to the wrong format and never resizes the current frame implicitly. The existing explicit frame duplicate/resize workflow remains the canonical format-changing contract; updating or cloning Plan intent for a resized target is a separate reviewable project transaction.
+When a rule declares different canvas dimensions, v2 requires a current project revision plus caller-generated target frame ID, slug, and name. One project-scoped preview duplicates and constraint-resizes the source, retargets the Plan compiler to the duplicate, applies only declared role behavior, and preserves the source frame. Any unresolved required role, node, anchor, protection, or resize intent rejects the whole preview; no partial frame is created.
 
 ## Protection and review
 
 Locked nodes emit no operation. Node or role protections preserve hide behavior; position, node, or role protections preserve reflow/resize behavior. Missing rules, roles, bindings, nodes, anchors, regions, or required stretch intent return structured warnings instead of guesses.
 
-Every non-empty result uses only existing `updateNode/transform` and `updateNode/visibility` operations through the authenticated transaction engine. Studio exposes the exact operations, warnings, rendered preview, commit, and discard controls. Plan approval remains descriptive and never commits automatically. Stale revisions fail before compilation.
+Same-format results use existing `updateNode/transform` and `updateNode/visibility` operations. Cross-format results use one extended `duplicateFrame` project operation that deterministically compiles the same bounded frame operations before its revision-zero baseline is written. Plan approval remains descriptive and never commits automatically.
 
 ## API parity
 
@@ -31,4 +31,4 @@ The typed client exposes `createDesignVariant`. Direct MCP and workspace-aware p
 
 ## Compatibility and rollback
 
-This slice adds no canonical field, warning code, operation kind, dependency, migration, product-version change, runtime API-version change, or workspace-schema change. Older clients retain the same Plan, layout, frame, preview, and history contracts but lack the convenience route/tool. Discard changes nothing. Commit and undo use existing exact frame history and inverses.
+The cross-format contract belongs to Runtime API/workspace schema 2. Discard changes nothing. Commit creates one new revision-zero frame and one project revision; undo removes that duplicate through the existing exact inverse.

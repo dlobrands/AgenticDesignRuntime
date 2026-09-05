@@ -10,9 +10,9 @@ Platform specifications and UI overlays can change. Verify current requirements 
 
 ## ADR output boundary
 
-ADR exports canonical PNG, JPEG, and WebP raster files. It does not itself certify PDF/X, CMYK conversions, spot colors, overprint, embedded fonts, printer profiles, live responsive behavior, keyboard access, or interactive target sizes.
+ADR exports canonical PNG, JPEG, WebP, bounded SVG, and flattened generic ICC-managed process-CMYK PDF files. It does not certify PDF/X, spot colors, overprint, separations, editable PDF vectors, printer-specific proofing, live responsive behavior, keyboard access, or interactive target sizes.
 
-ADR may create artwork intended for later print placement, but final print production must use the printer's specification and an appropriate prepress workflow. Do not label a raster export “print-ready PDF” or claim unsupported production proof.
+ADR may create artwork intended for later print placement, but final print production must use the printer's specification and an appropriate prepress workflow. Do not label ADR's generic CMYK PDF “PDF/X certified” or claim unsupported production proof.
 
 ## Social feed graphics
 

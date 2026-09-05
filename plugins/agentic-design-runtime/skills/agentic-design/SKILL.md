@@ -1,6 +1,6 @@
 ---
 name: agentic-design
-description: Create, revise, inspect, preview, validate, and export editable layered graphics with the local Agentic Design Runtime. Use for new client graphics, social posts, posters, cards, diagrams, branded compositions, revisions to existing runtime projects, Studio collaboration, asset or font imports, design history, and final PNG, JPEG, or WebP delivery. Also use when asked to install, start, reconnect, open, diagnose, or stop an Agentic Design Runtime workspace.
+description: Create and revise editable layered graphics with the local Agentic Design Runtime. Use for new graphics, bounded artwork changes, asset or font imports, Studio collaboration, rendered previews, and final export. Use agentic-design-review for read-only audits, agentic-brand-system for Brand Library administration, and agentic-design-ops for installation or runtime recovery.
 ---
 
 # Agentic Design
@@ -11,7 +11,7 @@ Build graphics through the runtime's typed MCP operations. Treat the runtime as 
 
 Apply the first matching case:
 
-1. For a specific inspection, validation, preview, export, Studio-open, or stop request, perform only that operation.
+1. For a bounded revision or export, inspect only the requested project and frame before acting.
 2. For an existing `design-runtime/` directory, call `ensure_design_workspace` with its parent as `clientRoot`, then inspect projects and frames before editing.
 3. For a fresh design, call `ensure_design_workspace` with the active client repository as `clientRoot` and `workspaceDirectory: "design-runtime"`.
 
@@ -101,23 +101,7 @@ Use `replace_role_asset` only after inspecting the exact canonical Plan assignme
 
 Use `bind_brand_tokens` only after inspecting the canonical Plan bindings and the project's exact immutable Brand Kit pin. The tool accepts no ad hoc token or value: it previews only supported declared palette/typography bindings through ordinary frame operations. Review the exact pinned revision, mapped font resources, rendered output, and warnings before commit. Never substitute the newest kit revision implicitly or treat unsupported effect/spacing/radius intent as applied.
 
-Use `bind_live_palette_token` when a node property should remain explicitly associated with one palette token. Supply a stable binding ID, canonical node ID, `fill`, `stroke`, or `textColor`, and the token key; never supply or infer a color or newer kit revision. Review and commit the returned canonical preview. Use `unbind_live_palette_token` to preserve appearance while intentionally detaching one property. A later direct edit also detaches only that property binding, and pin changes are rejected until an explicit migration proposal exists.
-
-Use `bind_live_typography_role` when a text node's paragraph style should remain associated with one exact type role. Supply a stable binding ID, canonical text-node ID, and role key only. The runtime resolves the font through the exact pinned project resource map and materializes the role values in the canonical frame. Review and commit the preview, and use `unbind_live_typography_role` for appearance-preserving detach. Never supply a font/value override or choose a newer kit revision implicitly. Direct paragraph typography edits detach the role; rich-text span overrides remain separate.
-
-Use `bind_live_effect_style` for one named ordered effect stack from the exact pinned kit. Supply a stable binding ID, canonical node ID, and style key only; never reconstruct or override the stack. Review and commit the canonical preview. Use `unbind_live_effect_style` to preserve appearance while detaching. Direct effect edits detach the style, and a newer kit revision never propagates implicitly.
-
-Use `bind_live_radius_token` for one named uniform rectangle-radius token from the exact pinned kit. Supply a stable binding ID, canonical rectangle ID, and token key only. Review and commit the preview. Use `unbind_live_radius_token` for appearance-preserving detach. Any later direct corner edit detaches the relationship; never supply corner values or infer a newer kit revision.
-
-Use `bind_live_spacing_token` for one named uniform canvas safe-area margin from the exact pinned kit. Supply a stable binding ID and token key only. Review the overlay, exact insets, and canonical preview before commit. Use `unbind_live_spacing_token` for appearance-preserving detach. Any direct safe-area edit detaches the relationship. Never reinterpret the token as arbitrary gaps, padding, or node movement.
-
-Use `apply_live_variable_mode` to preview one named exact-pin palette mode across all compatible live bindings in one frame; pass `null` only to restore base palette values. Review every materialized color and the frame mode identity before commit. It never changes unbound values, fonts, effects, radius, spacing, or another frame implicitly.
-
-For exact-pin component instances, use `switch_brand_component_variant` only with a compatible definition from the same declared variant group. Review the rendered preview and structured operations before commit; the switch preserves stable node IDs and active allowed overrides. Use `detach_brand_component` before unsupported hierarchy or property changes. Detach preserves appearance and IDs.
-
-Use `audit_brand_system` for read-only deterministic Brand integrity, organization-name, duplicate-label, and unbound-token findings. Treat informational unbound matches as review prompts, not objective defects, and never mutate artwork merely to reduce the count.
-
-Use `migrate_brand_kit_revision` only with an explicit target revision in the currently pinned kit lineage. Preview first, inspect the project pin and every affected live binding/component, then commit the same exact target at the unchanged project revision. Missing tokens, modes, resources, incompatible component structure, unsupported active overrides, or locked bound nodes must stop the whole migration. Use `rollback_brand_kit_migration` only as the explicit immediately-following inverse; never simulate rollback by pinning latest or flattening artwork.
+For live Brand bindings, component variants, exact-pin audits, or Brand Kit migration, use `$agentic-brand-system`; do not reconstruct those administration workflows inside this skill.
 
 Use `create_design_variants` with one exact saved variant rule and current frame revision. Review same-format hide, anchored reflow, and stretch-resize operations before commit. A different declared format must return no partial preview; use the explicit frame duplicate/resize workflow and review updated Plan intent separately. Never infer missing anchors, resize the current canvas implicitly, or present warnings as applied behavior.
 
@@ -125,4 +109,4 @@ Keep the runtime active during review. If the user has not approved or requested
 
 ## Recover safely
 
-Read [recovery.md](references/recovery.md) when installation, startup, imports, revisions, external edits, rendering, or shutdown fail. Preserve recovery files and the last valid scene. Never bypass workspace locks, path containment, validation, or capability authentication.
+Use `$agentic-design-ops` when installation, startup, update, descriptor, or shutdown recovery is required. For an artwork-scoped import, revision, external-edit, or render failure, read [recovery.md](references/recovery.md). Preserve recovery files and the last valid scene. Never bypass workspace locks, path containment, validation, or capability authentication.

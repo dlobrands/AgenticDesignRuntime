@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "skills": {
+    "agentic-design": {
+      "explicit": [
+        "Use $agentic-design to create an editable campaign graphic.",
+        "Use $agentic-design to revise the headline in this ADR frame.",
+        "Use $agentic-design to import this logo and place it in the design.",
+        "Use $agentic-design to create three structural directions for this post.",
+        "Use $agentic-design to export the approved frame."
+      ],
+      "indirect": [
+        "Make an editable 4:5 social graphic from this brief.",
+        "Move the CTA below the product without changing anything else.",
+        "Bring this image into the layered design and crop it safely.",
+        "Open the existing design and make the approved copy correction.",
+        "Render the final revision and give me the export."
+      ],
+      "negative": [
+        "Audit this design but do not change it.",
+        "Migrate this project to the next Brand Kit revision.",
+        "Why will my ADR runtime not start?",
+        "Generate a standalone raster illustration with Image Gen.",
+        "Review this React page for accessibility."
+      ]
+    },
+    "agentic-design-review": {
+      "explicit": [
+        "Use $agentic-design-review to audit this frame without changing it.",
+        "Use $agentic-design-review to compare revisions 8 and 11.",
+        "Use $agentic-design-review to validate this project for delivery.",
+        "Use $agentic-design-review to inspect Brand consistency.",
+        "Use $agentic-design-review to critique the rendered hierarchy."
+      ],
+      "indirect": [
+        "Tell me what is wrong with this ADR design, read-only.",
+        "Show exactly what changed between these two frame revisions.",
+        "Check whether this graphic has deterministic validation errors.",
+        "Does this project still match its pinned Brand Kit?",
+        "Review the actual pixels and report issues without fixing them."
+      ],
+      "negative": [
+        "Fix every issue you find in this design.",
+        "Create a new Brand Kit from this project.",
+        "Install ADR in this repository.",
+        "Export this Canva design.",
+        "Run a source-code security audit of the ADR repository."
+      ]
+    },
+    "agentic-brand-system": {
+      "explicit": [
+        "Use $agentic-brand-system to create a Brand Kit revision.",
+        "Use $agentic-brand-system to pin this project to revision 3.",
+        "Use $agentic-brand-system to bind the headline typography role.",
+        "Use $agentic-brand-system to switch this component variant.",
+        "Use $agentic-brand-system to migrate and verify the project pin."
+      ],
+      "indirect": [
+        "Turn this project's verified colors and fonts into a reusable Brand Kit.",
+        "Apply the exact pinned logo definition to this frame.",
+        "Keep this rectangle linked to the Brand radius token.",
+        "Detach this component so its hierarchy can be edited.",
+        "Move every live binding to Brand Kit revision 4."
+      ],
+      "negative": [
+        "Change the headline copy but leave Brand governance alone.",
+        "Review the frame for layout issues without changing it.",
+        "Open Studio for this workspace.",
+        "Create a generic brand strategy document.",
+        "Update the plugin installation."
+      ]
+    },
+    "agentic-design-ops": {
+      "explicit": [
+        "Use $agentic-design-ops to install ADR in this workspace.",
+        "Use $agentic-design-ops to diagnose the stale runtime descriptor.",
+        "Use $agentic-design-ops to open authenticated Studio.",
+        "Use $agentic-design-ops to check for a trusted runtime update.",
+        "Use $agentic-design-ops to stop this runtime safely."
+      ],
+      "indirect": [
+        "ADR is not installed in this repository yet.",
+        "The plugin says no active runtime matches this workspace.",
+        "Open the local design editor without exposing its token.",
+        "Verify whether this runtime and plugin are compatible.",
+        "Shut down ADR now that the export is complete."
+      ],
+      "negative": [
+        "Create an editable poster in the running workspace.",
+        "Audit the design quality without changing it.",
+        "Pin this project to a Brand Kit.",
+        "Deploy the ADR repository to production.",
+        "Open a raw localhost URL from an old message."
+      ]
+    }
+  },
+  "crossLane": [
+    {
+      "prompt": "Review the frame, then fix only the confirmed issue.",
+      "expectedSkills": ["agentic-design-review", "agentic-design"]
+    },
+    {
+      "prompt": "Create a branded post using the already pinned kit.",
+      "expectedSkills": ["agentic-design"]
+    },
+    {
+      "prompt": "Create a Brand Kit, pin it, then build a post.",
+      "expectedSkills": ["agentic-brand-system", "agentic-design"]
+    },
+    {
+      "prompt": "Install ADR and create the first draft.",
+      "expectedSkills": ["agentic-design-ops", "agentic-design"]
+    },
+    {
+      "prompt": "Render the frame so I can review it, but make no edits.",
+      "expectedSkills": ["agentic-design-review"]
+    },
+    {
+      "prompt": "Export the approved design and stop the runtime.",
+      "expectedSkills": ["agentic-design", "agentic-design-ops"]
+    },
+    {
+      "prompt": "Diagnose why Brand migration failed without retrying it.",
+      "expectedSkills": ["agentic-brand-system", "agentic-design-review"]
+    },
+    {
+      "prompt": "Reconnect to the workspace and compare the last two revisions.",
+      "expectedSkills": ["agentic-design-ops", "agentic-design-review"]
+    },
+    {
+      "prompt": "Apply the saved Plan's Brand bindings to the artwork.",
+      "expectedSkills": ["agentic-design"]
+    },
+    {
+      "prompt": "Audit unbound Brand values and do not bind them.",
+      "expectedSkills": ["agentic-design-review"]
+    },
+    {
+      "prompt": "Switch the component variant and show the rendered preview.",
+      "expectedSkills": ["agentic-brand-system"]
+    },
+    {
+      "prompt": "Import a font and use it in a new headline.",
+      "expectedSkills": ["agentic-design"]
+    },
+    {
+      "prompt": "The renderer failed after an import; preserve the workspace and diagnose it.",
+      "expectedSkills": ["agentic-design-ops"]
+    },
+    {
+      "prompt": "Check the signed update manifest but do not download anything.",
+      "expectedSkills": ["agentic-design-ops"]
+    },
+    {
+      "prompt": "Explain the pending visual proposal without committing it.",
+      "expectedSkills": ["agentic-design-review"]
+    },
+    {
+      "prompt": "Create three layout directions without changing Brand governance.",
+      "expectedSkills": ["agentic-design"]
+    },
+    {
+      "prompt": "Migrate the Brand Kit and then audit exact-pin integrity.",
+      "expectedSkills": ["agentic-brand-system"]
+    },
+    {
+      "prompt": "Open Studio so I can adjust the draft myself.",
+      "expectedSkills": ["agentic-design-ops"]
+    },
+    {
+      "prompt": "Compare the rendered draft at full and reduced size.",
+      "expectedSkills": ["agentic-design-review"]
+    },
+    {
+      "prompt": "Revise the approved copy, validate, and export.",
+      "expectedSkills": ["agentic-design"]
+    }
+  ]
+}

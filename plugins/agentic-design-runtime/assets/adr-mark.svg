@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Agentic Design Runtime mark">
+  <rect width="512" height="512" rx="96" fill="#11141A"/>
+  <path d="M116 144h216v216H116z" fill="none" stroke="#6F8CFF" stroke-width="18"/>
+  <path d="M180 96h216v216H180z" fill="#315CF5" fill-opacity=".18" stroke="#315CF5" stroke-width="18"/>
+  <circle cx="288" cy="204" r="34" fill="#F2F5FF"/>
+  <path d="M152 324l74-78 54 49 65-72 34 37v64z" fill="#F2F5FF"/>
+</svg>

@@ -1,3 +1,4 @@
+import { protectPrivatePath } from "../../../scripts/platform.mjs";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
 import { homedir } from "node:os";
@@ -64,7 +65,7 @@ export const sha256File = async (file: string): Promise<string> => {
 export const resolveRegisteredFile = async (
   project: Pick<ProjectState, "directory">,
   registered: { id: string; path: string; hash: string },
-  kind: "asset" | "font" = "asset",
+  kind: "asset" | "font" | "color-profile" = "asset",
 ): Promise<string> => {
   let target: string;
   let actual: string;
@@ -74,14 +75,22 @@ export const resolveRegisteredFile = async (
   } catch (error) {
     if (error instanceof RuntimeError) throw error;
     throw new RuntimeError(
-      kind === "asset" ? "ASSET_HASH_MISMATCH" : "FONT_HASH_MISMATCH",
+      kind === "asset"
+        ? "ASSET_HASH_MISMATCH"
+        : kind === "font"
+          ? "FONT_HASH_MISMATCH"
+          : "COLOR_PROFILE_HASH_MISMATCH",
       `Imported ${kind} ${registered.id} is missing or unreadable.`,
       { [`${kind}Id`]: registered.id, path: registered.path },
     );
   }
   if (actual !== registered.hash)
     throw new RuntimeError(
-      kind === "asset" ? "ASSET_HASH_MISMATCH" : "FONT_HASH_MISMATCH",
+      kind === "asset"
+        ? "ASSET_HASH_MISMATCH"
+        : kind === "font"
+          ? "FONT_HASH_MISMATCH"
+          : "COLOR_PROFILE_HASH_MISMATCH",
       `Imported ${kind} ${registered.id} does not match its registered SHA-256 hash.`,
       { [`${kind}Id`]: registered.id, path: registered.path },
     );
@@ -152,6 +161,7 @@ const initializeIfEmpty = async (root: string): Promise<void> => {
   }
   await ensureDirectory(path.join(root, "projects"));
   await ensureDirectory(path.join(root, ".design-runtime"));
+  await protectPrivatePath(path.join(root, ".design-runtime"));
   for (const directory of runtimeDirectories)
     await ensureDirectory(path.join(root, ".design-runtime", directory));
   await writeJsonAtomic(configPath, DEFAULT_CONFIG(randomUUID()));
@@ -169,9 +179,23 @@ export const loadProjectState = async (
   const fonts = FontManifestSchema.parse(
     await readJson(path.join(directory, "fonts", "fonts.json")),
   );
+  if (
+    document.schemaVersion !== 2 ||
+    assets.schemaVersion !== 2 ||
+    fonts.schemaVersion !== 2
+  )
+    throw new RuntimeError(
+      "SCHEMA_VERSION_UNSUPPORTED",
+      "Runtime 2 requires migrated schema-2 project, asset, and font documents.",
+      { projectId: document.id },
+    );
   const registeredFiles = [
     ...assets.assets.map((asset) => ({ ...asset, kind: "asset" as const })),
     ...fonts.fonts.map((font) => ({ ...font, kind: "font" as const })),
+    ...(document.colorProfiles ?? []).map((profile) => ({
+      ...profile,
+      kind: "color-profile" as const,
+    })),
   ];
   await forEachConcurrent(registeredFiles, 4, async (registered) => {
     await resolveRegisteredFile({ directory }, registered, registered.kind);
@@ -365,6 +389,7 @@ export const openWorkspace = async (
 ): Promise<WorkspaceState> => {
   const root = await assertReadableWritableDirectory(inputPath);
   await initializeIfEmpty(root);
+  await protectPrivatePath(path.join(root, ".design-runtime"));
   const runtimeId = randomUUID();
   const lockPath = path.join(root, ".design-runtime", "runtime.lock");
   await acquireWorkspaceLock(lockPath, runtimeId);
@@ -376,6 +401,13 @@ export const openWorkspace = async (
     const rawConfig = DesignConfigSchema.parse(
       await readJson(path.join(root, "design.config.json")),
     );
+    if (rawConfig.schemaVersion !== 2)
+      throw new RuntimeError(
+        "SCHEMA_VERSION_UNSUPPORTED",
+        "This workspace is schema 1. Run `design-runtime workspace migrate <path>` before opening it with ADR 2.",
+        { current: rawConfig.schemaVersion, required: 2 },
+        409,
+      );
     const config = {
       ...rawConfig,
       server: {
@@ -405,6 +437,7 @@ export const openWorkspace = async (
       options.descriptorDirectory ??
       path.join(homedir(), ".design-runtime", "runtimes");
     await ensureDirectory(descriptorDirectory);
+    await protectPrivatePath(descriptorDirectory);
     const descriptorPath = path.join(descriptorDirectory, `${runtimeId}.json`);
     const descriptor: RuntimeDescriptor = {
       schemaVersion: 1,

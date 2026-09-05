@@ -1,4 +1,141 @@
+import { useState, type FormEvent } from "react";
+import type { DesignBrief } from "@tva-agentic-design/core";
 import { useStudio } from "./store";
+
+function BriefCorrectionForm({ brief }: { brief: DesignBrief }) {
+  const [draft, setDraft] = useState(() => structuredClone(brief));
+  const preview = useStudio((state) => state.preview);
+  const correction = useStudio((state) => state.intentCorrection);
+  const previewCorrection = useStudio(
+    (state) => state.previewDesignBriefCorrection,
+  );
+  const commitPreview = useStudio((state) => state.commitPreview);
+  const discardPreview = useStudio((state) => state.discardPreview);
+  const active = correction?.kind === "brief" && correction.id === brief.id;
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    void previewCorrection({
+      ...draft,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+  return (
+    <form className="intent-correction" onSubmit={submit}>
+      <strong>Correct intent</strong>
+      <p>
+        Correct copy, constraints, or export intent. Saving creates a reviewed
+        project preview and never mutates artwork.
+      </p>
+      <label className="field field-wide">
+        <span>Objective</span>
+        <textarea
+          rows={3}
+          value={draft.objective}
+          onChange={(event) =>
+            setDraft({ ...draft, objective: event.target.value })
+          }
+        />
+      </label>
+      {draft.requiredCopy.map((item, index) => (
+        <label className="field field-wide" key={item.id}>
+          <span>{item.role}</span>
+          <textarea
+            rows={2}
+            value={item.text}
+            onChange={(event) => {
+              const requiredCopy = structuredClone(draft.requiredCopy);
+              requiredCopy[index] = { ...item, text: event.target.value };
+              setDraft({ ...draft, requiredCopy });
+            }}
+          />
+        </label>
+      ))}
+      {draft.constraints.map((constraint, index) => (
+        <label className="field field-wide" key={constraint.id}>
+          <span>{constraint.priority}</span>
+          <textarea
+            rows={2}
+            value={constraint.description}
+            onChange={(event) => {
+              const constraints = structuredClone(draft.constraints);
+              constraints[index] = {
+                ...constraint,
+                description: event.target.value,
+              };
+              setDraft({ ...draft, constraints });
+            }}
+          />
+        </label>
+      ))}
+      {draft.exportRequirements.map((requirement, index) => (
+        <div className="field-grid" key={requirement.id}>
+          <label className="field">
+            <span>Format</span>
+            <select
+              value={requirement.format}
+              onChange={(event) => {
+                const exportRequirements = structuredClone(
+                  draft.exportRequirements,
+                );
+                exportRequirements[index] = {
+                  ...requirement,
+                  format: event.target.value as typeof requirement.format,
+                };
+                setDraft({ ...draft, exportRequirements });
+              }}
+            >
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+              <option value="svg">SVG</option>
+              <option value="pdf">CMYK PDF</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Scale</span>
+            <input
+              type="number"
+              min="0.25"
+              max="4"
+              step="0.25"
+              value={requirement.scale}
+              onChange={(event) => {
+                const exportRequirements = structuredClone(
+                  draft.exportRequirements,
+                );
+                exportRequirements[index] = {
+                  ...requirement,
+                  scale: Number(event.target.value),
+                };
+                setDraft({ ...draft, exportRequirements });
+              }}
+            />
+          </label>
+        </div>
+      ))}
+      <div className="button-row">
+        <button type="submit">Preview corrections</button>
+        <button type="button" onClick={() => setDraft(structuredClone(brief))}>
+          Reset fields
+        </button>
+      </div>
+      {active && preview ? (
+        <div className="design-plan-compilation" role="status">
+          <strong>Review brief correction</strong>
+          <p>{preview.diff.length} canonical project changes.</p>
+          <div className="button-row">
+            <button type="button" onClick={() => void commitPreview()}>
+              Commit corrections
+            </button>
+            <button type="button" onClick={discardPreview}>
+              Discard corrections
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </form>
+  );
+}
 
 export function DesignBriefs() {
   const briefs = useStudio((state) => state.activeProject?.designBriefs ?? []);
@@ -182,10 +319,10 @@ export function DesignBriefs() {
               </ul>
             </div>
             <p className="advanced-disclosure">
-              Read-only intent. An approved DesignPlan may structure this brief;
-              only a separate reviewed compiler preview may propose canonical
-              operations.
+              Agent-authored intent. Structured corrections update only this
+              brief through a reviewed project transaction.
             </p>
+            <BriefCorrectionForm brief={brief} />
           </div>
         </details>
       ))}

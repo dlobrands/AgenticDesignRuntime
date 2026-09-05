@@ -77,6 +77,7 @@ export type RuntimeEventName =
   | "save.recovered"
   | "asset.imported"
   | "font.imported"
+  | "color-profile.imported"
   | "brand-kit.created"
   | "export.started"
   | "export.completed"

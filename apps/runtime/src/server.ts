@@ -62,6 +62,7 @@ import {
   normalizeExportSettings,
   ReflowContentOptionsSchema,
   reconstructRevision,
+  resizeFrameDocument,
   structuredDiff,
   validateFrame,
   type ApplyBrandInput,
@@ -84,7 +85,11 @@ import {
 import { KeyedQueue } from "./queue.js";
 import { buildProposalView } from "./proposals.js";
 import { resolveInside } from "./fs-safe.js";
-import { importAssetBuffer, importFontBuffer } from "./importer.js";
+import {
+  importAssetBuffer,
+  importColorProfileBuffer,
+  importFontBuffer,
+} from "./importer.js";
 import { RuntimeSecurity } from "./security.js";
 import type { TransactionEngine } from "./transaction-engine.js";
 import type { ProjectState, WorkspaceState } from "./types.js";
@@ -661,6 +666,10 @@ export const startRuntimeServer = async (input: {
     };
     Body: {
       baseRevision: number;
+      projectBaseRevision?: number;
+      newFrameId?: string;
+      slug?: string;
+      name?: string;
       actor: { source: "studio" | "http" | "mcp"; id: string };
     };
   }>(
@@ -690,6 +699,96 @@ export const startRuntimeServer = async (input: {
           undefined,
           404,
         );
+      const variant = plan.variantRules.find(
+        (candidate) => candidate.id === request.params.variantRuleId,
+      );
+      if (!variant)
+        throw new RuntimeError(
+          "INVALID_OPERATION",
+          `Variant rule ${request.params.variantRuleId} was not found.`,
+          undefined,
+          404,
+        );
+      const crossFormat =
+        variant.format &&
+        (variant.format.width !== frame.canvas.width ||
+          variant.format.height !== frame.canvas.height);
+      if (crossFormat) {
+        if (
+          request.body.projectBaseRevision === undefined ||
+          !request.body.newFrameId ||
+          !request.body.slug ||
+          !request.body.name
+        )
+          throw new RuntimeError(
+            "INVALID_OPERATION",
+            "Cross-format variants require projectBaseRevision, newFrameId, slug, and name.",
+          );
+        if (request.body.projectBaseRevision !== project.document.revision)
+          throw new RuntimeError(
+            "STALE_REVISION",
+            "Project revision changed before cross-format variant preview.",
+            {
+              expected: project.document.revision,
+              received: request.body.projectBaseRevision,
+            },
+            409,
+          );
+        const resized = resizeFrameDocument({
+          frame,
+          width: variant.format!.width,
+          height: variant.format!.height,
+          strategy: "constraints",
+        });
+        resized.id = request.body.newFrameId;
+        resized.slug = request.body.slug;
+        resized.name = request.body.name;
+        resized.revision = 0;
+        const compilation = compileDesignVariant({
+          plan: { ...structuredClone(plan), targetFrameId: resized.id },
+          frame: resized,
+          variantRuleId: request.params.variantRuleId,
+        });
+        const blocking = compilation.warnings.filter(
+          (warning) =>
+            warning.severity === "warning" &&
+            warning.code !== "PLAN_NOT_APPROVED",
+        );
+        if (blocking.length)
+          throw new RuntimeError(
+            "INVALID_OPERATION",
+            "Cross-format variant has unresolved required intent; no partial frame was previewed.",
+            { warnings: blocking },
+          );
+        const preview = await engine.execute({
+          schemaVersion: 1,
+          mode: "preview",
+          runtimeId: workspace.runtimeId,
+          workspaceId: workspace.config.workspaceId,
+          scope: { kind: "project", projectId: request.params.projectId },
+          baseRevision: request.body.projectBaseRevision,
+          actor: security.actorForRequest(request, envelope.actor),
+          operations: [
+            {
+              kind: "duplicateFrame",
+              frameId: frame.id,
+              newFrameId: request.body.newFrameId,
+              slug: request.body.slug,
+              name: request.body.name,
+              resize: {
+                width: variant.format!.width,
+                height: variant.format!.height,
+                strategy: "constraints",
+              },
+              variant: {
+                planId: plan.id,
+                variantRuleId: variant.id,
+              },
+            },
+          ],
+        });
+        return { compilation, preview };
+      }
       const compilation = compileDesignVariant({
         plan,
         frame,
@@ -1224,6 +1323,14 @@ export const startRuntimeServer = async (input: {
         },
       };
     },
+  );
+  app.get<{ Params: { projectId: string } }>(
+    "/api/projects/:projectId/color-profiles",
+    async (request) => ({
+      profiles:
+        requireProject(workspace, request.params.projectId).document
+          .colorProfiles ?? [],
+    }),
   );
   app.get<{ Params: { kitId: string }; Querystring: { revision?: string } }>(
     "/api/brand-kits/:kitId",
@@ -2101,6 +2208,69 @@ export const startRuntimeServer = async (input: {
       }
     },
   );
+  app.post<{ Params: { projectId: string } }>(
+    "/api/projects/:projectId/color-profiles/import",
+    async (request) => {
+      const project = requireProject(workspace, request.params.projectId);
+      const upload = await request.file();
+      if (!upload)
+        throw new RuntimeError(
+          "INVALID_OPERATION",
+          "A multipart ICC profile file is required.",
+        );
+      const buffer = await upload.toBuffer();
+      const baseRevision = parseRevisionField(upload.fields.baseRevision);
+      const licenseField = upload.fields.licenseNotes;
+      const licenseNotes =
+        typeof licenseField === "object" &&
+        licenseField &&
+        "value" in licenseField
+          ? String(licenseField.value)
+          : undefined;
+      if (baseRevision !== project.document.revision)
+        throw new RuntimeError(
+          "STALE_REVISION",
+          "Project revision changed before color-profile import.",
+          { expected: project.document.revision, received: baseRevision },
+          409,
+        );
+      const imported = await importColorProfileBuffer({
+        project,
+        buffer,
+        filename: upload.filename,
+        ...(licenseNotes ? { licenseNotes } : {}),
+      });
+      try {
+        const transaction = await engine.commitVerifiedImport({
+          projectId: project.document.id,
+          baseRevision,
+          actor: security.actorForRequest(request, {
+            id: "color-profile-import",
+          }),
+          operation: {
+            kind: "importColorProfile",
+            profile: imported.profile,
+          },
+        });
+        engine.events.emit("color-profile.imported", {
+          projectId: project.document.id,
+          profile: imported.profile,
+          duplicate: imported.duplicate,
+          revision: transaction.revision,
+        });
+        return {
+          profile: imported.profile,
+          duplicate: imported.duplicate,
+          transaction,
+        };
+      } catch (error) {
+        await Promise.all(
+          imported.createdPaths.map((target) => rm(target, { force: true })),
+        );
+        throw error;
+      }
+    },
+  );
 
   app.post<{ Params: { projectId: string; frameId: string } }>(
     "/api/projects/:projectId/frames/:frameId/validate",
@@ -2214,8 +2384,10 @@ export const startRuntimeServer = async (input: {
       requireFrame(project, frameId),
     );
     await Promise.all(frames.map((frame) => requireExportable(project, frame)));
-    frames.forEach((frame) =>
-      exportWorker.assertExportSupported(frame, settings),
+    await Promise.all(
+      frames.map((frame) =>
+        exportWorker.preflightExport(project, frame, settings),
+      ),
     );
     const started = performance.now();
     const exports = [];

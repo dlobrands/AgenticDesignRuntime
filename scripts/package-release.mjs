@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import {
+  runCommandSync as execFileSync,
+  supportedTargets,
+} from "./platform.mjs";
 import {
   chmod,
   cp,
@@ -23,6 +26,11 @@ const productMetadata = JSON.parse(
   await readFile(path.join(root, "product-metadata.json"), "utf8"),
 );
 const version = productMetadata.productVersion;
+if (
+  JSON.stringify(productMetadata.supportedTargets) !==
+  JSON.stringify(supportedTargets)
+)
+  throw new Error("Platform utility and product support metadata disagree.");
 if (packageJson.version !== version)
   throw new Error("Root package version does not match product-metadata.json.");
 for (const packagePath of [
@@ -135,6 +143,7 @@ await writeFile(
   `${JSON.stringify(
     {
       schemaVersion: 1,
+      supportedTargets,
       productVersion: version,
       runtimeApiVersion: productMetadata.runtimeApiVersion,
       workspaceSchemaVersion: productMetadata.workspaceSchemaVersion,
@@ -181,6 +190,7 @@ const manifest = {
   product: "Agentic Design Runtime",
   version,
   platform: "macOS Apple Silicon",
+  supportedTargets,
   builtAt: new Date().toISOString(),
   engines: {
     node: ">=22",
@@ -200,7 +210,12 @@ const manifest = {
   agentIntegration: {
     plugin: "agentic-design-runtime",
     pluginVersion,
-    skill: "$agentic-design",
+    skills: [
+      "$agentic-design",
+      "$agentic-design-review",
+      "$agentic-brand-system",
+      "$agentic-design-ops",
+    ],
     runtimeArtifact: runtimeArchiveName,
     designIntelligenceVersion: productMetadata.designIntelligenceVersion,
     designIntelligenceManifestSha256: await digest(
@@ -222,7 +237,7 @@ const manifest = {
     "runtime CLI",
     "MCP stdio adapter",
     "Agentic Design Runtime Codex plugin",
-    "$agentic-design entry skill",
+    "four focused ADR plugin skills",
     `design intelligence curriculum ${productMetadata.designIntelligenceVersion}`,
   ],
   artifacts,
@@ -232,67 +247,80 @@ await writeFile(
   `${JSON.stringify(manifest, null, 2)}\n`,
   { mode: 0o600 },
 );
-const install = `# Agentic Design Runtime ${version}\n\nRequires macOS Apple Silicon, macOS 14+, Node 24.18.0 (Node >=22 accepted), pnpm 10.34.5, and pinned Chromium.\n\n## Verified local installation\n\n\`\`\`bash\nnode install-macos-release.mjs --release . --target "$HOME/.agentic-design-runtime/current"\nnode doctor-macos.mjs --target "$HOME/.agentic-design-runtime/current"\n\`\`\`\n\nThe installer verifies every checksum before writing, stages an isolated exact-version install, validates all three binaries, and atomically replaces the target while retaining the previous install as a timestamped backup. Workspaces are never stored inside or deleted with the installation. Start with an existing empty directory: \`$HOME/.agentic-design-runtime/current/node_modules/.bin/design-runtime dev /absolute/workspace/path\`.\n\nTo uninstall recoverably, run \`node uninstall-macos-release.mjs --target "$HOME/.agentic-design-runtime/current"\`.\n\n## Trusted updates\n\nUpdate check/fetch/apply/rollback remains disabled until an approved official origin, release signing key, provenance builder identity, and channel policy are provisioned in the owner-only trust configuration. The included manifest and provenance files are non-active templates.\n\n## Codex agent plugin\n\nRun \`node install-personal-plugin.mjs\`, start a new Codex task, then invoke \`$agentic-design\`. The plugin installs its exact bundled runtime on first use and loads the versioned design-intelligence curriculum through the existing skill.\n`;
+const install = `# Agentic Design Runtime ${version}\n\nRequires macOS 14+ Apple Silicon or Windows 11 x64, Node 24.18.0 (Node >=22 accepted), pnpm 10.34.5, and pinned Chromium.\n\n## Verified local installation\n\n\`\`\`bash\nnode install-macos-release.mjs --release . --target "$HOME/.agentic-design-runtime/current"\nnode doctor-macos.mjs --target "$HOME/.agentic-design-runtime/current"\n\`\`\`\n\nThe installer verifies every checksum before writing, stages an isolated exact-version install, validates all three binaries, and atomically replaces the target while retaining the previous install as a timestamped backup. Workspaces are never stored inside or deleted with the installation. Schema-1 workspaces require the explicit stopped-workspace migration before Runtime 2 can edit them.\n\nTo uninstall recoverably, run \`node uninstall-macos-release.mjs --target "$HOME/.agentic-design-runtime/current"\`.\n\n## Windows developer installation\n\n\`\`\`powershell\nnode install-windows-release.mjs --release . --target "$env:USERPROFILE/.agentic-design-runtime/current"\nnode doctor-windows.mjs --target "$env:USERPROFILE/.agentic-design-runtime/current"\n\`\`\`\n\nUse uninstall-windows-release.mjs for recoverable removal. See WINDOWS_SUPPORT.md for prerequisites and acceptance status.\n\n## Trusted updates\n\nUpdate check/fetch/apply/rollback remains disabled until an approved official origin, release signing key, provenance builder identity, and channel policy are provisioned in the owner-only trust configuration. The included manifest and provenance files are non-active templates.\n\n## Codex agent plugin\n\nRun \`node install-personal-plugin.mjs\`, then start a new Codex task. Use \`$agentic-design\` for creation, \`$agentic-design-review\` for read-only review, \`$agentic-brand-system\` for Brand governance, and \`$agentic-design-ops\` for runtime operation and migration.\n`;
 await writeFile(path.join(release, "INSTALL.md"), install, { mode: 0o600 });
 await cp(
-  path.join(root, "scripts", "install-personal-plugin.mjs"),
-  path.join(release, "install-personal-plugin.mjs"),
+  path.join(root, "docs", "WINDOWS_SUPPORT.md"),
+  path.join(release, "WINDOWS_SUPPORT.md"),
 );
-for (const script of [
+const releaseScripts = [
+  "platform.mjs",
+  "verify-checksums.mjs",
+  "doctor.mjs",
+  "install-release.mjs",
+  "uninstall-release.mjs",
+  "install-personal-plugin.mjs",
   "doctor-macos.mjs",
   "install-macos-release.mjs",
   "uninstall-macos-release.mjs",
-])
+  "doctor-windows.mjs",
+  "install-windows-release.mjs",
+  "uninstall-windows-release.mjs",
+];
+for (const script of releaseScripts)
   await cp(path.join(root, "scripts", script), path.join(release, script));
 execFileSync(
   process.execPath,
   [path.join(root, "scripts", "generate-release-evidence.mjs")],
   { cwd: root, stdio: "inherit" },
 );
-
-const bundleName = `agentic-design-runtime-v${version}-macos-arm64.tgz`;
-execFileSync(
-  "tar",
-  [
-    "-czf",
-    path.join(release, bundleName),
-    "-C",
-    release,
-    ...components,
-    "release-manifest.json",
-    "INSTALL.md",
-    "install-personal-plugin.mjs",
-    "doctor-macos.mjs",
-    "install-macos-release.mjs",
-    "uninstall-macos-release.mjs",
-    "sbom.spdx.json",
-    "provenance.template.json",
-    "trusted-update-manifest.template.json",
-  ],
-  { cwd: root, stdio: "inherit" },
-);
 const checksumFiles = [
   ...components,
   "release-manifest.json",
   "INSTALL.md",
-  "install-personal-plugin.mjs",
-  "doctor-macos.mjs",
-  "install-macos-release.mjs",
-  "uninstall-macos-release.mjs",
+  "WINDOWS_SUPPORT.md",
+  ...releaseScripts,
   "sbom.spdx.json",
   "provenance.template.json",
   "trusted-update-manifest.template.json",
-  bundleName,
+  "trusted-update-manifest.windows.template.json",
 ];
-const checksums = (
-  await Promise.all(
-    checksumFiles.map(
-      async (name) => `${await digest(path.join(release, name))}  ${name}`,
-    ),
-  )
-).join("\n");
-await writeFile(path.join(release, "SHA256SUMS"), `${checksums}\n`, {
-  mode: 0o600,
-});
+const checksumText = async (files) =>
+  (
+    await Promise.all(
+      files.map(
+        async (name) => `${await digest(path.join(release, name))}  ${name}`,
+      ),
+    )
+  ).join("\n") + "\n";
+// The archive carries component checksums; the outer list additionally verifies both bundles.
+await writeFile(
+  path.join(release, "SHA256SUMS"),
+  await checksumText(checksumFiles),
+);
+const bundles = [];
+for (const target of ["macos-arm64", "windows-x64"]) {
+  const bundleName = `agentic-design-runtime-v${version}-${target}.tgz`;
+  execFileSync(
+    "tar",
+    [
+      "-czf",
+      path.join(release, bundleName),
+      "-C",
+      release,
+      ...checksumFiles,
+      "SHA256SUMS",
+    ],
+    { cwd: root, stdio: "inherit" },
+  );
+  bundles.push(bundleName);
+}
+await writeFile(
+  path.join(release, "SHA256SUMS"),
+  await checksumText([...checksumFiles, ...bundles]),
+  { mode: 0o600 },
+);
 await chmod(path.join(release, "SHA256SUMS"), 0o600);
-process.stdout.write(`${path.join(release, bundleName)}\n`);
+process.stdout.write(
+  `${bundles.map((name) => path.join(release, name)).join("\n")}\n`,
+);

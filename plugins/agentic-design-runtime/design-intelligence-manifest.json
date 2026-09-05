@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "entryPoint": "skills/agentic-design/references/design-intelligence/core-judgment.md",
   "scope": {
-    "supportedOutputs": ["png", "jpeg", "webp"],
+    "supportedOutputs": ["png", "jpeg", "webp", "svg", "pdf"],
     "runtimeAuthority": "Agentic Design Runtime canonical transactions",
     "excludes": [
       "automatic model training or weight updates",
-      "PDF/X or CMYK production certification",
+      "PDF/X certification, spot colors, overprint, separations, or printer-specific color guarantees",
       "responsive interface implementation",
       "self-scored release approval"
     ]

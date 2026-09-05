@@ -1,3 +1,10 @@
+import {
+  isPrivateFile,
+  pathIsInside,
+  commandInvocation,
+  installedCli,
+  assertWindowsPath,
+} from "../../../scripts/platform.mjs";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
@@ -75,7 +82,7 @@ const installRoot = (): string =>
   );
 
 const installedRuntimeBinary = (): string =>
-  path.join(installRoot(), "node_modules", ".bin", "design-runtime");
+  installedCli(installRoot(), "design-runtime");
 
 const installedRuntimeArchiveDigest = (): string =>
   path.join(installRoot(), ".runtime-archive.sha256");
@@ -126,11 +133,12 @@ const updatedRuntimeInvocation = async (): Promise<
   const installs = await realpath(path.join(updateRoot(), "installs")).catch(
     () => undefined,
   );
-  if (!installs || !root.startsWith(`${installs}${path.sep}`)) return undefined;
+  if (!installs || !pathIsInside(installs, root) || root === installs)
+    return undefined;
   const entrypoint = await realpath(path.join(root, pointer.entrypoint)).catch(
     () => undefined,
   );
-  if (!entrypoint || !entrypoint.startsWith(`${root}${path.sep}`))
+  if (!entrypoint || !pathIsInside(root, entrypoint) || entrypoint === root)
     return undefined;
   const manifest = UpdateManifestSchema.parse(
     JSON.parse(await readFile(path.join(root, "update-manifest.json"), "utf8")),
@@ -199,7 +207,11 @@ const runtimeInvocation = async (): Promise<RuntimeInvocation | undefined> => {
   if (updated) return updated;
   const binary = installedRuntimeBinary();
   return access(binary, constants.X_OK)
-    .then(() => ({ command: binary, prefix: [], source: "bundled" as const }))
+    .then(() => ({
+      command: process.execPath,
+      prefix: [binary],
+      source: "bundled" as const,
+    }))
     .catch(() => undefined);
 };
 
@@ -411,9 +423,11 @@ const ensureRuntimeInstalled = async (
         `${JSON.stringify({ private: true, type: "module" }, null, 2)}\n`,
         { mode: 0o600 },
       );
+      const packageManager = commandInvocation("pnpm");
       await executeFile(
-        "pnpm",
+        packageManager.command,
         [
+          ...packageManager.args,
           "add",
           "--force",
           "--save-exact",
@@ -440,18 +454,13 @@ const ensureRuntimeInstalled = async (
     throw new Error("The bundled runtime installation did not produce a CLI.");
 
   if (installBrowser && !process.env.ADR_SKIP_BROWSER_INSTALL) {
-    const playwright = path.join(
-      installRoot(),
-      "node_modules",
-      ".bin",
-      "playwright",
-    );
+    const playwright = installedCli(installRoot(), "playwright");
     if (
       await access(playwright, constants.X_OK)
         .then(() => true)
         .catch(() => false)
     )
-      await executeFile(playwright, ["install", "chromium"], {
+      await executeFile(process.execPath, [playwright, "install", "chromium"], {
         cwd: installRoot(),
         env: process.env,
         encoding: "utf8",
@@ -463,6 +472,7 @@ const ensureRuntimeInstalled = async (
 };
 
 const validateWorkspaceDirectoryName = (value: string): void => {
+  if (process.platform === "win32") assertWindowsPath(value);
   if (
     !value ||
     value === "." ||
@@ -562,6 +572,24 @@ export const runRuntimeLifecycle = async (
   );
 };
 
+export const runWorkspaceMigration = async (
+  workspacePath: string,
+  action: "inspect" | "preview" | "commit" | "rollback",
+): Promise<Record<string, unknown>> => {
+  const invocation = await runtimeInvocation();
+  if (!invocation)
+    throw new Error(
+      "The plugin-pinned ADR runtime is not installed. Run ensure_design_workspace on a fresh workspace or reinstall the plugin bundle.",
+    );
+  const canonical = await realpath(workspacePath);
+  const output = await run(
+    invocation,
+    ["workspace", "migration", action, canonical],
+    { timeout: 120_000 },
+  );
+  return parseLastJsonLine(output);
+};
+
 export const listActiveWorkspaces = async (): Promise<
   Array<Omit<Descriptor, "capabilityToken">>
 > => {
@@ -573,7 +601,7 @@ export const listActiveWorkspaces = async (): Promise<
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const descriptorPath = path.join(directory, entry.name);
     const info = await stat(descriptorPath).catch(() => undefined);
-    if (!info?.isFile() || (info.mode & 0o077) !== 0) continue;
+    if (!info?.isFile() || !(await isPrivateFile(descriptorPath))) continue;
     const descriptor = await readFile(descriptorPath, "utf8")
       .then((value) => JSON.parse(value) as Descriptor)
       .catch(() => undefined);
@@ -610,14 +638,16 @@ const descriptorForWorkspace = async (
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const descriptorPath = path.join(directory, entry.name);
     const info = await stat(descriptorPath).catch(() => undefined);
-    if (!info?.isFile() || (info.mode & 0o077) !== 0) continue;
+    if (!info?.isFile() || !(await isPrivateFile(descriptorPath))) continue;
     const descriptor = await readFile(descriptorPath, "utf8")
       .then((value) => JSON.parse(value) as Descriptor)
       .catch(() => undefined);
     if (
       descriptor &&
       descriptor.schemaVersion === 1 &&
-      descriptor.workspacePath === requested &&
+      typeof descriptor.workspacePath === "string" &&
+      pathIsInside(descriptor.workspacePath, requested) &&
+      pathIsInside(requested, descriptor.workspacePath) &&
       processExists(descriptor.pid)
     )
       matches.push(descriptor);

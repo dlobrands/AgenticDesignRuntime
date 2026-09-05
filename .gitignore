@@ -12,6 +12,7 @@ test-results/
 !.env.example
 .design-runtime/
 design-runtime/
+design-runtime-experiments/
 projects/
 *.tgz
 public-snapshot/

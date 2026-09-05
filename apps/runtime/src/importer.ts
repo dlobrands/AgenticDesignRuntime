@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   RuntimeError,
   type Asset,
+  type ColorProfileRecord,
   type FontRecord,
 } from "@tva-agentic-design/core";
 import { fileTypeFromBuffer } from "file-type";
@@ -493,6 +494,66 @@ export const importFontBuffer = async (input: {
       licenseNotes:
         input.licenseNotes?.trim() ||
         "User-provided font; redistribution rights must be verified by the project owner.",
+    },
+    createdPaths: [target],
+    duplicate: false,
+  };
+};
+
+export const importColorProfileBuffer = async (input: {
+  project: ProjectState;
+  buffer: Buffer;
+  filename: string;
+  licenseNotes?: string;
+}): Promise<{
+  profile: ColorProfileRecord;
+  createdPaths: string[];
+  duplicate: boolean;
+}> => {
+  if (
+    input.buffer.byteLength < 128 ||
+    input.buffer.byteLength > 16 * 1024 * 1024
+  )
+    throw new RuntimeError(
+      "COLOR_PROFILE_INVALID",
+      "ICC profiles must be between 128 bytes and 16 MB.",
+    );
+  const declaredSize = input.buffer.readUInt32BE(0);
+  const signature = input.buffer.subarray(36, 40).toString("ascii");
+  const colorSpace = input.buffer.subarray(16, 20).toString("ascii");
+  if (
+    signature !== "acsp" ||
+    declaredSize < 128 ||
+    declaredSize > input.buffer.byteLength ||
+    colorSpace !== "CMYK"
+  )
+    throw new RuntimeError(
+      "COLOR_PROFILE_INVALID",
+      "The file is not a valid process-CMYK ICC profile.",
+      { declaredSize, actualSize: input.buffer.byteLength, colorSpace },
+    );
+  const hash = digest(input.buffer);
+  const duplicate = input.project.document.colorProfiles?.find(
+    (profile) => profile.hash === hash,
+  );
+  if (duplicate)
+    return { profile: duplicate, createdPaths: [], duplicate: true };
+  const id = randomUUID();
+  const relativePath = `color-profiles/${id}.icc`;
+  const target = path.join(input.project.directory, relativePath);
+  await writeFileAtomic(target, input.buffer);
+  return {
+    profile: {
+      id,
+      name: path
+        .basename(input.filename, path.extname(input.filename))
+        .slice(0, 160),
+      path: relativePath,
+      mimeType: "application/vnd.iccprofile",
+      hash,
+      sizeBytes: input.buffer.byteLength,
+      colorSpace: "cmyk",
+      licenseNotes: input.licenseNotes?.trim() ?? "",
     },
     createdPaths: [target],
     duplicate: false,

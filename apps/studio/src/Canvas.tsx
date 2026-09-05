@@ -58,6 +58,10 @@ import {
   transitionToolState,
 } from "./tool-state-machine";
 import { clientPointToCanvas, scaledCanvasSize } from "./viewport-state";
+import {
+  resolveCanvasTarget,
+  selectNode as nextNodeSelection,
+} from "./selection-service";
 
 type Gesture = {
   mode: TransformGestureMode;
@@ -73,6 +77,7 @@ type Gesture = {
   centerY: number;
   selectionBounds: CanvasBounds;
   selectedIds: string[];
+  clickSelection?: string[];
   transforms: Record<string, Transform>;
   currentTransforms: Record<string, Transform>;
   snapOtherBounds: CanvasBounds[];
@@ -798,9 +803,12 @@ export function CanvasSurface() {
       position.y >= overlay.y &&
       position.y <= overlay.y + overlay.height,
     );
-    const hitNodeId = rendererRef.current.hitTestNode(position);
-    const nodeId =
-      hitNodeId ?? (selectedBoundsHit ? selectedNode!.id : undefined);
+    const nodeId = resolveCanvasTarget({
+      hitCandidates: rendererRef.current.hitTestNodes(position),
+      selection,
+      selectedBoundsFallback: selectedBoundsHit ? selectedNode!.id : undefined,
+      cycle: event.altKey,
+    });
     const node = nodeId ? findNode(frame, nodeId) : undefined;
     if (canvasTool === "text") {
       event.preventDefault();
@@ -1142,13 +1150,29 @@ export function CanvasSurface() {
       position.y >= overlay.y &&
       position.y <= overlay.y + overlay.height,
     );
+    // Prefer the topmost rendered layer. Otherwise a selected full-canvas
+    // background captures every click inside its bounds.
+    const selectedCoversCanvas = Boolean(
+      overlay &&
+      overlay.x <= 0 &&
+      overlay.y <= 0 &&
+      overlay.x + overlay.width >= frame.canvas.width &&
+      overlay.y + overlay.height >= frame.canvas.height,
+    );
     const targetId =
       forcedId ??
-      (selectedBoundsHit
+      (selectedBoundsHit && !selectedCoversCanvas && !event.altKey
         ? selectedNode!.id
-        : rendererRef.current.hitTestNode(position));
+        : resolveCanvasTarget({
+            hitCandidates: rendererRef.current.hitTestNodes(position),
+            selection,
+            selectedBoundsFallback: selectedBoundsHit
+              ? selectedNode!.id
+              : undefined,
+            cycle: event.altKey,
+          }));
     if (!targetId) {
-      const additive = event.shiftKey || event.metaKey;
+      const additive = event.shiftKey || event.metaKey || event.ctrlKey;
       marqueeRef.current = {
         pointerId: event.pointerId,
         captureTarget: event.currentTarget,
@@ -1169,9 +1193,24 @@ export function CanvasSurface() {
       event.preventDefault();
       return;
     }
-    if (!selection.includes(targetId))
-      select(targetId, event.shiftKey || event.metaKey);
-    const activeIds = selection.includes(targetId) ? selection : [targetId];
+    const additive = event.shiftKey || event.metaKey || event.ctrlKey;
+    const targetAlreadySelected = selection.includes(targetId);
+    const nextSelection = additive
+      ? nextNodeSelection(selection, targetId, true)
+      : targetAlreadySelected
+        ? [...selection]
+        : [targetId];
+    const clickSelection =
+      !additive && targetAlreadySelected && selection.length > 1
+        ? [targetId]
+        : undefined;
+    selectMany(nextSelection);
+    if (!nextSelection.includes(targetId)) {
+      canvasRef.current?.focus({ preventScroll: true });
+      event.preventDefault();
+      return;
+    }
+    const activeIds = nextSelection;
     const transforms: Record<string, Transform> = {};
     const bounds: CanvasBounds[] = [];
     for (const id of activeIds) {
@@ -1214,6 +1253,7 @@ export function CanvasSurface() {
       centerY: targetBounds.y + targetBounds.height / 2,
       selectionBounds: combinedBounds(bounds),
       selectedIds: activeIds,
+      clickSelection,
       transforms,
       currentTransforms: structuredClone(transforms),
       snapOtherBounds,
@@ -1315,7 +1355,10 @@ export function CanvasSurface() {
             ]
           : [],
     );
-    if (operations.length === 0) return;
+    if (operations.length === 0) {
+      if (gesture.clickSelection) selectMany(gesture.clickSelection);
+      return;
+    }
     commitInFlightRef.current = true;
     let result: Awaited<ReturnType<typeof commit>>;
     try {

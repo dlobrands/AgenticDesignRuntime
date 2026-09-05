@@ -1929,7 +1929,7 @@ test("ordered effect stacks migrate, edit, reorder, and render canonically", asy
     initial,
   );
   expect(createHash("sha256").update(initial).digest("hex")).toBe(
-    "42018bbacf7e8e444a9f8af8cb7e4028af39a6b64cc7d7377c156048faa31587",
+    "ab1c61b1f4e215fe0b9ad29d184aca2e9b65c995fc8f92d1673d35dfa4fca21f",
   );
   await page.getByRole("button", { name: "Move Gradient overlay up" }).click();
   await expect(frameButton).toContainText("r4");
@@ -4521,6 +4521,8 @@ test("Studio previews color, scale, rotation, and marquee selection before one r
   expect(transactionRequests).toBe(requestsBeforeColor);
   await page.mouse.up();
   await expect.poll(() => transactionRequests).toBe(requestsBeforeColor + 1);
+  // Starting the next gesture while its predecessor is still committing is ignored.
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await expect(
     page.getByText("Revision conflict", { exact: true }),
   ).toHaveCount(0);
@@ -4574,6 +4576,8 @@ test("Studio previews color, scale, rotation, and marquee selection before one r
   expect(transactionRequests).toBe(requestsBeforeScale);
   await page.mouse.up();
   await expect.poll(() => transactionRequests).toBe(requestsBeforeScale + 1);
+  // Starting the next gesture while its predecessor is still committing is ignored.
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   const rotateHandle = page.getByRole("button", {
     name: "Rotate selected layer from SE corner",
@@ -4601,6 +4605,8 @@ test("Studio previews color, scale, rotation, and marquee selection before one r
   expect(transactionRequests).toBe(requestsBeforeRotation);
   await page.mouse.up();
   await expect.poll(() => transactionRequests).toBe(requestsBeforeRotation + 1);
+  // Starting the next gesture while its predecessor is still committing is ignored.
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   const canvasBounds = await canvas.boundingBox();
   expect(canvasBounds).not.toBeNull();
@@ -5118,6 +5124,8 @@ test("MCP stdio inspection, preview, and commit match the HTTP runtime", async (
         "runtime_status",
         "get_frame",
         "preview_batch",
+        "preview_layer_compositing",
+        "preview_arrange_layers",
         "commit_batch",
         "list_brand_kits",
         "create_brand_kit",
@@ -5248,7 +5256,17 @@ test("agent plugin MCP requires and resolves the explicit workspace", async () =
         "list_active_workspaces",
         "open_studio",
         "render_preview",
+        "preview_layer_compositing",
+        "preview_arrange_layers",
         "wait_for_frame_change",
+        "list_brand_kits",
+        "get_brand_kit",
+        "create_brand_kit",
+        "pin_brand_kit",
+        "unpin_brand_kit",
+        "apply_brand",
+        "detach_brand_component",
+        "switch_brand_component_variant",
         "audit_brand_system",
         "migrate_brand_kit_revision",
         "rollback_brand_kit_migration",
@@ -5274,6 +5292,13 @@ test("agent plugin MCP requires and resolves the explicit workspace", async () =
     expect(JSON.stringify(active.structuredContent)).not.toContain(
       descriptor.capabilityToken,
     );
+
+    const brandKits = await client.callTool({
+      name: "list_brand_kits",
+      arguments: { workspacePath: root },
+    });
+    expect(brandKits.isError).not.toBe(true);
+    expect(brandKits.structuredContent).toHaveProperty("kits");
 
     const projects = await client.callTool({
       name: "list_projects",
@@ -8394,7 +8419,9 @@ test("DesignBrief, DesignPlan, reviewed intent compilation, and deterministic vi
     page.getByText("Canonical Campaign Launch", { exact: true }),
   ).toBeVisible();
   await page.getByText("Canonical Campaign Launch", { exact: true }).click();
-  await expect(page.getByText("Preserve human intent")).toBeVisible();
+  await expect(
+    page.getByText("Preserve human intent", { exact: true }).first(),
+  ).toBeVisible();
   await expect(page.getByText("Agents propose. Humans refine.")).toBeVisible();
   await expect(page.getByText(/Required tokens: brand.graphite/)).toBeVisible();
   await expect(
@@ -10245,6 +10272,10 @@ test("Plan-declared variants reflow, resize, and hide without partial format cha
       headers: { ...runtimeHeaders(), "content-type": "application/json" },
       body: JSON.stringify({
         baseRevision: 1,
+        projectBaseRevision: 2,
+        newFrameId: "9f000000-0000-4000-8000-00000000000e",
+        slug: "portrait-campaign",
+        name: "Portrait campaign",
         actor: { source: "http", id: "format-variant-review" },
       }),
     },
@@ -10252,15 +10283,15 @@ test("Plan-declared variants reflow, resize, and hide without partial format cha
   expect(formatPreview.status).toBe(200);
   expect(await formatPreview.json()).toMatchObject({
     compilation: {
-      operations: [],
-      warnings: [
+      operations: [
         expect.objectContaining({
-          code: "UNSUPPORTED_INTENT",
-          message: expect.stringContaining("no partial variant"),
+          kind: "updateNode",
+          nodeId: heroNodeId,
+          propertyGroup: "visibility",
         }),
       ],
     },
-    preview: null,
+    preview: { baseRevision: 2 },
   });
   expect(await render()).toEqual(before);
 
@@ -12098,8 +12129,8 @@ test("HTTP security rejects untrusted callers and rotates the capability", async
   expect(await currentToken.json()).toMatchObject({
     status: "ready",
     compatibility: {
-      runtimeApiVersion: 1,
-      workspaceSchemaVersion: 1,
+      runtimeApiVersion: 2,
+      workspaceSchemaVersion: 2,
     },
   });
 });

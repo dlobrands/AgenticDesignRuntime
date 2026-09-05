@@ -6,6 +6,7 @@ import {
   TEMPLATE_SLOT_ROLES,
   type AdjustmentNode,
   type AssetManifest,
+  type ColorProfileRecord,
   type DesignConfig,
   type DesignBrief,
   type DesignPlan,
@@ -146,6 +147,7 @@ const effectId = z
   .max(160)
   .regex(/^[A-Za-z0-9:_.@-]+$/, "Use a stable portable effect ID.");
 const effectBase = { id: effectId, enabled: z.boolean() };
+const effectBlendMode = { blendMode: z.enum(SUPPORTED_BLEND_MODES).optional() };
 const shadowEffectShape = {
   ...effectBase,
   offsetX: finite.min(-500).max(500),
@@ -154,6 +156,7 @@ const shadowEffectShape = {
   spread: finite.min(-64).max(128),
   color,
   opacity,
+  ...effectBlendMode,
 };
 
 export const EffectSchema: z.ZodType<Effect> = z.discriminatedUnion("type", [
@@ -174,6 +177,7 @@ export const EffectSchema: z.ZodType<Effect> = z.discriminatedUnion("type", [
       spread: finite.min(-64).max(128),
       color,
       opacity,
+      ...effectBlendMode,
     })
     .strict(),
   z
@@ -184,6 +188,7 @@ export const EffectSchema: z.ZodType<Effect> = z.discriminatedUnion("type", [
       spread: finite.min(-64).max(128),
       color,
       opacity,
+      ...effectBlendMode,
     })
     .strict(),
   z
@@ -192,6 +197,7 @@ export const EffectSchema: z.ZodType<Effect> = z.discriminatedUnion("type", [
       type: z.literal("colorOverlay"),
       paint: SolidFillSchema,
       opacity,
+      ...effectBlendMode,
     })
     .strict(),
   z
@@ -200,6 +206,7 @@ export const EffectSchema: z.ZodType<Effect> = z.discriminatedUnion("type", [
       type: z.literal("gradientOverlay"),
       paint: z.union([LinearGradientFillSchema, RadialGradientFillSchema]),
       opacity,
+      ...effectBlendMode,
     })
     .strict(),
 ]);
@@ -229,6 +236,24 @@ export const ResizeConstraintsSchema = z
   .object({
     horizontal: z.enum(["left", "center", "right", "stretch", "scale"]),
     vertical: z.enum(["top", "middle", "bottom", "stretch", "scale"]),
+  })
+  .strict();
+
+export const LayoutContainerSchema = z
+  .object({
+    direction: z.enum(["row", "column"]),
+    gap: z.number().finite().min(0).max(10_000),
+    padding: z
+      .object({
+        top: z.number().finite().min(0).max(10_000),
+        right: z.number().finite().min(0).max(10_000),
+        bottom: z.number().finite().min(0).max(10_000),
+        left: z.number().finite().min(0).max(10_000),
+      })
+      .strict(),
+    align: z.enum(["start", "center", "end", "stretch"]),
+    distribution: z.enum(["start", "center", "end", "space-between"]),
+    wrap: z.boolean(),
   })
   .strict();
 
@@ -370,6 +395,7 @@ const baseNodeShape = {
 
 const compositingShape = {
   opacity,
+  fillOpacity: opacity.optional(),
   blendMode: z.enum(SUPPORTED_BLEND_MODES),
   effects: EffectsSchema.optional(),
 };
@@ -446,6 +472,17 @@ export const TextNodeSchema = z
         letterSpacing: finite,
         alignment: z.enum(["left", "center", "right", "justify"]),
         verticalAlignment: z.enum(["top", "middle", "bottom"]),
+        direction: z.enum(["auto", "ltr", "rtl"]).optional(),
+        language: z
+          .string()
+          .min(2)
+          .max(35)
+          .regex(/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/)
+          .optional(),
+        fontFeatures: z
+          .array(z.string().regex(/^[A-Za-z0-9]{4}$/))
+          .max(32)
+          .optional(),
         color,
         opacity,
       })
@@ -510,6 +547,22 @@ export const TextNodeSchema = z
           message: "Text spans must cover the complete text.",
           path: ["spans"],
         });
+      const segmenter = new Intl.Segmenter(node.typography.language, {
+        granularity: "grapheme",
+      });
+      const boundaries = new Set([
+        0,
+        node.text.length,
+        ...[...segmenter.segment(node.text)].map((segment) => segment.index),
+      ]);
+      node.spans.forEach((span, index) => {
+        if (!boundaries.has(span.start) || !boundaries.has(span.end))
+          context.addIssue({
+            code: "custom",
+            message: "Text span boundaries cannot split a grapheme cluster.",
+            path: ["spans", index],
+          });
+      });
     }
     if (node.textBox.mode === "fixed" && node.textBox.height === undefined) {
       context.addIssue({
@@ -599,6 +652,25 @@ export const VectorPathCommandSchema = z.discriminatedUnion("kind", [
       to: VectorPathPointSchema,
     })
     .strict(),
+  z
+    .object({
+      id: vectorCommandId,
+      kind: z.literal("quadratic"),
+      control: VectorPathPointSchema,
+      to: VectorPathPointSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: vectorCommandId,
+      kind: z.literal("arc"),
+      radius: z.object({ x: positive.max(1), y: positive.max(1) }).strict(),
+      rotation: finite.min(-360).max(360),
+      largeArc: z.boolean(),
+      sweep: z.boolean(),
+      to: VectorPathPointSchema,
+    })
+    .strict(),
   z.object({ id: vectorCommandId, kind: z.literal("close") }).strict(),
 ]);
 
@@ -608,6 +680,7 @@ export const VectorPathNodeSchema = z
     ...compositingShape,
     type: z.literal("vectorPath"),
     commands: z.array(VectorPathCommandSchema).min(2).max(1024),
+    fillRule: z.enum(["nonzero", "evenodd"]).optional(),
     fill: ShapeFillSchema.optional(),
     stroke: StrokeSchema.optional(),
   })
@@ -649,7 +722,8 @@ export const VectorPathNodeSchema = z
         if (!subpathOpen)
           context.addIssue({
             code: "custom",
-            message: "Line and cubic commands require a preceding move.",
+            message:
+              "Line, quadratic, cubic, and arc commands require a preceding move.",
             path: ["commands", index],
           });
         drawable = true;
@@ -658,7 +732,8 @@ export const VectorPathNodeSchema = z
     if (!drawable)
       context.addIssue({
         code: "custom",
-        message: "Vector paths require at least one line or cubic command.",
+        message:
+          "Vector paths require at least one line, quadratic, cubic, or arc command.",
         path: ["commands"],
       });
   });
@@ -709,6 +784,7 @@ export const SceneNodeSchema: z.ZodType<SceneNode> = z.lazy(() =>
         ...baseNodeShape,
         ...groupCompositingShape,
         type: z.literal("group"),
+        layout: LayoutContainerSchema.optional(),
         children: z.array(SceneNodeSchema),
       })
       .strict(),
@@ -960,15 +1036,23 @@ export const DesignBriefSchema = z
             scale: z.number().finite().min(0.25).max(4),
             quality: z.number().int().min(1).max(100).optional(),
             matteColor: color.optional(),
+            svgMode: z.enum(["vectorOnly", "hybrid"]).optional(),
+            dpi: z.number().int().min(72).max(600).optional(),
+            outputIccProfileId: uuid.optional(),
+            bleedMm: z.number().finite().min(0).max(25).optional(),
+            cropMarks: z.boolean().optional(),
             transparentBackground: z.enum(["required", "allowed", "forbidden"]),
           })
           .strict()
           .superRefine((value, context) => {
-            if (value.format === "png" && value.quality !== undefined)
+            if (
+              !["jpeg", "webp"].includes(value.format) &&
+              value.quality !== undefined
+            )
               context.addIssue({
                 code: "custom",
                 path: ["quality"],
-                message: "PNG export does not accept lossy quality.",
+                message: `${value.format.toUpperCase()} export does not accept lossy quality.`,
               });
             if (value.format !== "jpeg" && value.matteColor !== undefined)
               context.addIssue({
@@ -976,14 +1060,32 @@ export const DesignBriefSchema = z
                 path: ["matteColor"],
                 message: "Only JPEG export accepts a matte color.",
               });
+            if (value.format !== "svg" && value.svgMode !== undefined)
+              context.addIssue({
+                code: "custom",
+                path: ["svgMode"],
+                message: "Only SVG export accepts an SVG mode.",
+              });
+            for (const key of [
+              "dpi",
+              "outputIccProfileId",
+              "bleedMm",
+              "cropMarks",
+            ] as const)
+              if (value.format !== "pdf" && value[key] !== undefined)
+                context.addIssue({
+                  code: "custom",
+                  path: [key],
+                  message: `${key} is available only for PDF export.`,
+                });
             if (
-              value.format === "jpeg" &&
+              (value.format === "jpeg" || value.format === "pdf") &&
               value.transparentBackground === "required"
             )
               context.addIssue({
                 code: "custom",
                 path: ["transparentBackground"],
-                message: "JPEG cannot require a transparent background.",
+                message: `${value.format.toUpperCase()} cannot require a transparent background.`,
               });
           }),
       )
@@ -1541,7 +1643,7 @@ export const FrameBrandModeSchema = z
 
 export const FrameDocumentSchema: z.ZodType<FrameDocument> = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     id: uuid,
     slug,
     name: z.string().min(1).max(160),
@@ -1633,14 +1735,19 @@ export const ExportSettingsSchema = z
     scale: z.number().finite().min(0.25).max(4),
     quality: z.number().int().min(1).max(100).optional(),
     matteColor: color.optional(),
+    svgMode: z.enum(["vectorOnly", "hybrid"]).optional(),
+    dpi: z.number().int().min(72).max(600).optional(),
+    outputIccProfileId: uuid.optional(),
+    bleedMm: z.number().finite().min(0).max(25).optional(),
+    cropMarks: z.boolean().optional(),
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.format === "png" && value.quality !== undefined)
+    if (!["jpeg", "webp"].includes(value.format) && value.quality !== undefined)
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["quality"],
-        message: "PNG export does not accept a lossy quality value.",
+        message: `${value.format.toUpperCase()} export does not accept lossy quality.`,
       });
     if (value.format !== "jpeg" && value.matteColor !== undefined)
       context.addIssue({
@@ -1648,6 +1755,30 @@ export const ExportSettingsSchema = z
         path: ["matteColor"],
         message: "Only JPEG export accepts a transparency matte color.",
       });
+    if (value.format !== "svg" && value.svgMode !== undefined)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["svgMode"],
+        message: "Only SVG export accepts an SVG mode.",
+      });
+    if (value.format === "pdf" && !value.outputIccProfileId)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outputIccProfileId"],
+        message: "CMYK PDF export requires an explicit ICC profile ID.",
+      });
+    for (const key of [
+      "dpi",
+      "outputIccProfileId",
+      "bleedMm",
+      "cropMarks",
+    ] as const)
+      if (value.format !== "pdf" && value[key] !== undefined)
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} is available only for PDF export.`,
+        });
   });
 
 export const ExportSettingsInputSchema = z
@@ -1656,6 +1787,11 @@ export const ExportSettingsInputSchema = z
     scale: z.number().finite().min(0.25).max(4).optional(),
     quality: z.number().int().min(1).max(100).optional(),
     matteColor: color.optional(),
+    svgMode: z.enum(["vectorOnly", "hybrid"]).optional(),
+    dpi: z.number().int().min(72).max(600).optional(),
+    outputIccProfileId: uuid.optional(),
+    bleedMm: z.number().finite().min(0).max(25).optional(),
+    cropMarks: z.boolean().optional(),
   })
   .strict();
 
@@ -1680,14 +1816,19 @@ export const ExportPresetSchema = z
     scale: z.number().finite().min(0.25).max(4),
     quality: z.number().int().min(1).max(100).optional(),
     matteColor: color.optional(),
+    svgMode: z.enum(["vectorOnly", "hybrid"]).optional(),
+    dpi: z.number().int().min(72).max(600).optional(),
+    outputIccProfileId: uuid.optional(),
+    bleedMm: z.number().finite().min(0).max(25).optional(),
+    cropMarks: z.boolean().optional(),
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.format === "png" && value.quality !== undefined)
+    if (!["jpeg", "webp"].includes(value.format) && value.quality !== undefined)
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["quality"],
-        message: "PNG export does not accept a lossy quality value.",
+        message: `${value.format.toUpperCase()} export does not accept lossy quality.`,
       });
     if (value.format !== "jpeg" && value.matteColor !== undefined)
       context.addIssue({
@@ -1695,11 +1836,40 @@ export const ExportPresetSchema = z
         path: ["matteColor"],
         message: "Only JPEG export accepts a transparency matte color.",
       });
+    if (value.format !== "svg" && value.svgMode !== undefined)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["svgMode"],
+        message: "Only SVG export accepts an SVG mode.",
+      });
+    if (value.format === "pdf" && !value.outputIccProfileId)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outputIccProfileId"],
+        message: "CMYK PDF export requires an explicit ICC profile ID.",
+      });
   });
+
+export const ColorProfileRecordSchema: z.ZodType<ColorProfileRecord> = z
+  .object({
+    id: uuid,
+    name: z.string().trim().min(1).max(160),
+    path: relativePath,
+    mimeType: z.literal("application/vnd.iccprofile"),
+    hash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+    sizeBytes: z
+      .number()
+      .int()
+      .min(128)
+      .max(16 * 1024 * 1024),
+    colorSpace: z.literal("cmyk"),
+    licenseNotes: z.string().max(4_000),
+  })
+  .strict();
 
 export const ProjectDocumentSchema: z.ZodType<ProjectDocument> = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     id: uuid,
     slug,
     name: z.string().min(1).max(160),
@@ -1731,6 +1901,16 @@ export const ProjectDocumentSchema: z.ZodType<ProjectDocument> = z
           new Set(presets.map((preset) => preset.name.toLocaleLowerCase()))
             .size === presets.length,
         { message: "Export preset names must be unique." },
+      )
+      .optional(),
+    colorProfiles: z
+      .array(ColorProfileRecordSchema)
+      .max(32)
+      .refine(
+        (profiles) =>
+          new Set(profiles.map((profile) => profile.id)).size ===
+          profiles.length,
+        { message: "Color profile IDs must be unique." },
       )
       .optional(),
     templates: z
@@ -1809,6 +1989,21 @@ export const ProjectDocumentSchema: z.ZodType<ProjectDocument> = z
         path: ["frameOrder"],
       });
     }
+    const profileIds = new Set(
+      (project.colorProfiles ?? []).map((profile) => profile.id),
+    );
+    project.exportPresets?.forEach((preset, index) => {
+      if (
+        preset.format === "pdf" &&
+        preset.outputIccProfileId &&
+        !profileIds.has(preset.outputIccProfileId)
+      )
+        context.addIssue({
+          code: "custom",
+          message: "PDF export preset references an unavailable ICC profile.",
+          path: ["exportPresets", index, "outputIccProfileId"],
+        });
+    });
   });
 
 export const RasterAssetSchema = z
@@ -1844,7 +2039,10 @@ export const AssetSchema = z.discriminatedUnion("type", [
 ]);
 
 export const AssetManifestSchema: z.ZodType<AssetManifest> = z
-  .object({ schemaVersion: z.literal(1), assets: z.array(AssetSchema) })
+  .object({
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
+    assets: z.array(AssetSchema),
+  })
   .strict();
 
 export const FontRecordSchema = z
@@ -1863,14 +2061,14 @@ export const FontRecordSchema = z
 
 export const FontManifestSchema: z.ZodType<FontManifest> = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     fonts: z.array(FontRecordSchema),
   })
   .strict();
 
 export const DesignConfigSchema: z.ZodType<DesignConfig> = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     workspaceId: uuid,
     server: z
       .object({

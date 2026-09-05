@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createFrameDocument } from "@tva-agentic-design/core";
 import {
   retainExistingSelection,
+  resolveCanvasTarget,
   selectNode,
   selectNodes,
 } from "../src/selection-service";
@@ -71,5 +72,22 @@ describe("selection service", () => {
         frame,
       ),
     ).toEqual(["11111111-1111-4111-8111-111111111111"]);
+  });
+
+  it("prefers topmost content over selected background bounds and cycles overlaps", () => {
+    expect(
+      resolveCanvasTarget({
+        hitCandidates: ["foreground", "background"],
+        selection: ["background"],
+        selectedBoundsFallback: "background",
+      }),
+    ).toBe("foreground");
+    expect(
+      resolveCanvasTarget({
+        hitCandidates: ["foreground", "middle", "background"],
+        selection: ["foreground"],
+        cycle: true,
+      }),
+    ).toBe("middle");
   });
 });

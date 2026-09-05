@@ -1,0 +1,7 @@
+interface:
+  display_name: "Agentic Design Operations"
+  short_description: "Install, recover, and operate ADR"
+  default_prompt: "Use $agentic-design-ops to inspect this ADR workspace and safely perform the requested runtime operation."
+  brand_color: "#315CF5"
+policy:
+  allow_implicit_invocation: true
